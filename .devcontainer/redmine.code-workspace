@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "/usr/local/redmine/plugins/dummy",
+		},
+		{
+			"path": "/usr/local/redmine",
+		}
+	],
+	"settings": {
+		"git.ignoredRepositories": [
+			"/usr/local/redmine",
+		]
+	}
+}
