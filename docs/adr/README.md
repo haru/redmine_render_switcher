@@ -50,3 +50,4 @@ surrounding software changes.
 |---|---|---|---|
 | [0001](./0001-patch-formatters-instead-of-registering-a-format.md) | Patch both formatters instead of registering a new format | Accepted | 2026-09-19 |
 | [0002](./0002-add-detector-version-to-formatted-text-cache-key.md) | Add the detector version to the formatted-text cache key | Accepted | 2026-09-19 |
+| [0003](./0003-forward-constructor-arguments-untouched.md) | Forward the formatter constructor's arguments untouched | Accepted | 2026-09-19 |

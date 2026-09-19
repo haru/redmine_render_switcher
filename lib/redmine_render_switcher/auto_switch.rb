@@ -51,15 +51,20 @@ module RedmineRenderSwitcher
       klass.prepend(self)
     end
 
-    # Keeps the text and options so that a delegate can be built from them later.
+    # Keeps the arguments so that a delegate can be built from them later.
+    #
+    # Redmine 6.0 and 6.1 build a formatter from the text alone, and 7.0 adds an
+    # options hash. Whatever the running core passes is forwarded untouched, both to
+    # +super+ and to the delegate, so neither call ever gets an argument the core
+    # formatter's constructor does not take.
     #
     # Detection deliberately does not happen here: a formatter is built for every
     # text Redmine considers rendering, and paying for detection on instances that
     # are never rendered would be pure waste.
     #
     # @param text [String] the text to render.
-    # @param options [Hash] the formatter options Redmine passes through.
-    def initialize(text, options = {})
+    # @param options [Array] the further arguments Redmine passes, if any.
+    def initialize(text, *options)
       @render_switcher_text = text
       @render_switcher_options = options
       super
@@ -147,7 +152,7 @@ module RedmineRenderSwitcher
       return nil if format.nil? || format == own_format
 
       render_switcher_switching do
-        Redmine::WikiFormatting.formatter_for(format).new(@render_switcher_text, @render_switcher_options)
+        Redmine::WikiFormatting.formatter_for(format).new(@render_switcher_text, *@render_switcher_options)
       end
     end
 

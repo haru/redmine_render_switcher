@@ -103,6 +103,11 @@ class RenderSwitcherWriteSideTest < Redmine::IntegrationTest
     super
   end
 
+  # @return [Boolean] whether the running Redmine is at least the given release.
+  def redmine_at_least?(major, minor)
+    ([ Redmine::VERSION::MAJOR, Redmine::VERSION::MINOR ] <=> [ major, minor ]) >= 0
+  end
+
   test "preview returns the same verdict the saved page will get" do
     post "/preview/text", params: { text: TEXTILE_BODY }
 
@@ -111,11 +116,30 @@ class RenderSwitcherWriteSideTest < Redmine::IntegrationTest
     assert_match(%r{<a href="https://ex\.com/"[^>]*>link</a>}, response.body)
   end
 
-  test "the edit form still advertises the site format to the input helpers" do
+  test "the edit form still loads the toolbar of the site format" do
+    get "/issues/1/edit"
+
+    assert_response :success
+    assert_select "script[src*=?]", "jstoolbar/common_mark"
+  end
+
+  # Redmine 6.1 added list-autofill to the wiki textareas and 7.0 added table-paste;
+  # 6.0 has neither, so each assertion only runs where the core provides the helper.
+  test "the edit form still advertises the site format to the list-autofill helper" do
+    skip "list-autofill needs Redmine 6.1" unless redmine_at_least?(6, 1)
+
     get "/issues/1/edit"
 
     assert_response :success
     assert_select "textarea[data-list-autofill-text-formatting-param=?]", Setting.text_formatting
+  end
+
+  test "the edit form still advertises the site format to the table-paste helper" do
+    skip "table-paste needs Redmine 7.0" unless redmine_at_least?(7, 0)
+
+    get "/issues/1/edit"
+
+    assert_response :success
     assert_select "textarea[data-table-paste-text-formatting-param=?]", Setting.text_formatting
   end
 

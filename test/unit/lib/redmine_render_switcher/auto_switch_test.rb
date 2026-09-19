@@ -203,6 +203,56 @@ class RedmineRenderSwitcherAutoSwitchTest < ActiveSupport::TestCase
     end
   end
 
+  # Redmine 6.0 and 6.1 build a formatter from the text alone, while 7.0 also hands
+  # over an options hash, so AutoSwitch has to accept whatever the running core passes
+  # and give exactly that to the formatter it wraps. The stand-in classes below have
+  # the two constructor shapes; Redmine 7.0's real classes accept both, so they cannot
+  # show the difference themselves.
+  context "AutoSwitch construction" do
+    setup { enable_auto_detect(true) }
+
+    should "wrap a formatter that is built from the text alone" do
+      formatter_class = Class.new do
+        def initialize(text)
+          @text = text
+        end
+
+        def to_html(*)
+          "rendered #{@text}"
+        end
+      end
+      RedmineRenderSwitcher::AutoSwitch.prepend_to(formatter_class)
+
+      assert_equal "rendered body", formatter_class.new("body").to_html
+    end
+
+    should "wrap a formatter that is built from the text and an options hash" do
+      formatter_class = Class.new do
+        def initialize(text, options)
+          @text = text
+          @options = options
+        end
+
+        def to_html(*)
+          "rendered #{@text} #{@options[:mark]}"
+        end
+      end
+      RedmineRenderSwitcher::AutoSwitch.prepend_to(formatter_class)
+
+      assert_equal "rendered body !", formatter_class.new("body", { mark: "!" }).to_html
+    end
+
+    should "hand the delegate the same arguments it received, with or without options" do
+      Setting.text_formatting = "common_mark"
+
+      [ [ TEXTILE_BODY ], [ TEXTILE_BODY, {} ] ].each do |args|
+        html = Redmine::WikiFormatting.formatter_for("common_mark").new(*args).to_html
+
+        assert_match(/<h2[^>]*>Heading/, html, "built with #{args.size} argument(s)")
+      end
+    end
+  end
+
   context "AutoSwitch installation" do
     # C-10
     should "stay applied exactly once however often it is installed" do
