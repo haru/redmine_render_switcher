@@ -48,12 +48,12 @@ class RedmineRenderSwitcherCacheKeyTest < ActiveSupport::TestCase
 
   context "RedmineRenderSwitcher::CacheKey#cache_key_for" do
     # K-01
-    should "append the detector generation to the key" do
+    should "append the detector generation and the threshold to the key" do
       enable_auto_detect(true)
 
       key = Redmine::WikiFormatting.cache_key_for("textile", BIG_TEXT, @issue, "description")
 
-      assert key.end_with?("-rs#{RedmineRenderSwitcher::Detector::VERSION}"), key
+      assert key.end_with?("-rs#{RedmineRenderSwitcher::Detector::VERSION}t2"), key
       assert key.start_with?(core_cache_key_for("textile", BIG_TEXT, @issue, "description")), key
     end
 
@@ -81,6 +81,29 @@ class RedmineRenderSwitcherCacheKeyTest < ActiveSupport::TestCase
       enable_auto_detect(true)
 
       assert_nil Redmine::WikiFormatting.cache_key_for("textile", BIG_TEXT, Issue.new, "description")
+    end
+
+    # K-07: the threshold decides a verdict just as much as the detector code does,
+    # so an entry cached under one threshold must not be served under another. Core
+    # caches formatted text with no expiry, so a surviving entry survives for good.
+    should "produce a different key for a different threshold" do
+      keys = [ 2, 7 ].map do |threshold|
+        Setting.plugin_redmine_render_switcher =
+          { "auto_detect_enabled" => "1", "score_threshold" => threshold.to_s }
+        Redmine::WikiFormatting.cache_key_for("textile", BIG_TEXT, @issue, "description")
+      end
+
+      assert_not_equal keys.first, keys.last
+    end
+
+    # K-08: the same settings must keep producing the same key, or nothing is ever
+    # a cache hit.
+    should "produce a stable key while the settings do not change" do
+      enable_auto_detect(true)
+      args = [ "textile", BIG_TEXT, @issue, "description" ]
+
+      assert_equal Redmine::WikiFormatting.cache_key_for(*args),
+                   Redmine::WikiFormatting.cache_key_for(*args)
     end
 
     # K-05

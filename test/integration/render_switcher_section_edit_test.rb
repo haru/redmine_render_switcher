@@ -94,7 +94,7 @@ class RenderSwitcherDirectiveRenderingTest < ActiveSupport::TestCase
 
   TEXTILE_SECTIONS = "#{TEXTILE_DIRECTIVE}\n\nh2. A\n\ntext a\n\nh2. B\n\ntext b\n"
   TEXTILE_SECTIONS_NO_BLANK_LINE = "#{TEXTILE_DIRECTIVE}\nh2. A\n\ntext a\n\nh2. B\n\ntext b\n"
-  TEXTILE_ORDERED_LIST = "#{MARKDOWN_DIRECTIVE}\n\n# 起動する\n# 設定する\n# 確認する\n"
+  TEXTILE_ORDERED_LIST = "#{MARKDOWN_DIRECTIVE}\n\n# Start the server\n# Configure it\n# Verify the result\n"
 
   def setup
     @original_format = Setting.text_formatting
@@ -167,7 +167,7 @@ class RenderSwitcherDirectiveRenderingTest < ActiveSupport::TestCase
 
     html = Redmine::WikiFormatting.to_html("textile", TEXTILE_ORDERED_LIST)
 
-    assert_match(/<h1[^>]*>起動する/, html)
+    assert_match(/<h1[^>]*>Start the server/, html)
     assert_not_includes html, "<ol>"
   end
 end

@@ -168,8 +168,7 @@ module RedmineRenderSwitcher
     def build_render_switcher_detection
       directive = Directive.parse(@render_switcher_text)
       if directive
-        result = Detector::Result.new(format: directive, textile_score: 0,
-                                      markdown_score: 0, reason: :directive)
+        result = Detector::Result.directive(directive)
         render_switcher_logger.debug { "detected #{result.to_log}" }
         return result
       end

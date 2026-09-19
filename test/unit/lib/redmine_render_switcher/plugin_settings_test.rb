@@ -6,8 +6,8 @@ class RedmineRenderSwitcherPluginSettingsTest < ActiveSupport::TestCase
   fixtures :projects, :users, :email_addresses, :trackers, :issue_statuses,
            :enumerations, :issues, :roles, :members, :member_roles, :enabled_modules
 
-  TEXTILE_BODY = %(h2. みだし\n\n"link":https://ex.com/\n)
-  MARKDOWN_BODY = %(## みだし\n\n[link](https://ex.com/)\n)
+  TEXTILE_BODY = %(h2. Heading\n\n"link":https://ex.com/\n)
+  MARKDOWN_BODY = %(## Heading\n\n[link](https://ex.com/)\n)
 
   # Renders the way Redmine would with this plugin not installed.
   def core_to_html(format, text)

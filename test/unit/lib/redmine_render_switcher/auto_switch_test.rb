@@ -19,9 +19,9 @@ class RedmineRenderSwitcherAutoSwitchTest < ActiveSupport::TestCase
 
   RedmineRenderSwitcher::Detector.singleton_class.prepend(DetectCounter)
 
-  TEXTILE_BODY = %(h2. みだし\n\n"link":https://ex.com/\n)
-  MARKDOWN_BODY = %(## みだし\n\n[link](https://ex.com/)\n)
-  PLAIN_BODY = "これは普通の日本語の文章です。記法の特徴はありません。\n"
+  TEXTILE_BODY = %(h2. Heading\n\n"link":https://ex.com/\n)
+  MARKDOWN_BODY = %(## Heading\n\n[link](https://ex.com/)\n)
+  PLAIN_BODY = "This is ordinary prose that carries no notation at all.\n"
 
   # Markdown sections, used while the site is set to Textile so that the section
   # helpers have to work off the delegate's separators rather than Textile's.
@@ -71,7 +71,7 @@ class RedmineRenderSwitcherAutoSwitchTest < ActiveSupport::TestCase
 
       html = Redmine::WikiFormatting.to_html("common_mark", TEXTILE_BODY)
 
-      assert_includes html, "<h2>みだし</h2>"
+      assert_includes html, "<h2>Heading</h2>"
       assert_includes html, 'href="https://ex.com/"'
     end
 
@@ -81,7 +81,7 @@ class RedmineRenderSwitcherAutoSwitchTest < ActiveSupport::TestCase
 
       html = Redmine::WikiFormatting.to_html("textile", MARKDOWN_BODY)
 
-      assert_includes html, "<h2>みだし</h2>"
+      assert_includes html, "<h2>Heading</h2>"
       assert_includes html, 'href="https://ex.com/"'
     end
 
@@ -112,7 +112,7 @@ class RedmineRenderSwitcherAutoSwitchTest < ActiveSupport::TestCase
         Redmine::WikiFormatting.to_html("common_mark", TEXTILE_BODY)
       end
 
-      assert_includes Redmine::WikiFormatting.to_html("common_mark", TEXTILE_BODY), "<h2>みだし</h2>"
+      assert_includes Redmine::WikiFormatting.to_html("common_mark", TEXTILE_BODY), "<h2>Heading</h2>"
     end
 
     # C-07

@@ -13,7 +13,7 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
            :news, :documents, :boards, :messages,
            :custom_fields, :custom_values, :enabled_modules
 
-  TEXTILE_BODY = %(h2. みだし\n\n"link":https://ex.com/\n)
+  TEXTILE_BODY = %(h2. Heading\n\n"link":https://ex.com/\n)
 
   def setup
     super
@@ -69,7 +69,7 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
       formatted_text_holders.each do |label, (object, attribute)|
         html = textilizable(object, attribute)
 
-        assert_match(/<h2[^>]*>みだし/, html, "#{label} was not rendered as Textile")
+        assert_match(/<h2[^>]*>Heading/, html, "#{label} was not rendered as Textile")
         assert_match(%r{<a href="https://ex\.com/"[^>]*>link</a>}, html,
                      "#{label} lost its Textile link")
       end
@@ -85,7 +85,7 @@ class RenderSwitcherWriteSideTest < Redmine::IntegrationTest
            :issue_categories, :versions, :workflows, :custom_fields, :custom_values,
            :custom_fields_trackers, :attachments
 
-  TEXTILE_BODY = %(h2. みだし\n\n"link":https://ex.com/\n)
+  TEXTILE_BODY = %(h2. Heading\n\n"link":https://ex.com/\n)
 
   def setup
     super
@@ -107,7 +107,7 @@ class RenderSwitcherWriteSideTest < Redmine::IntegrationTest
     post "/preview/text", params: { text: TEXTILE_BODY }
 
     assert_response :success
-    assert_match(/<h2[^>]*>みだし/, response.body)
+    assert_match(/<h2[^>]*>Heading/, response.body)
     assert_match(%r{<a href="https://ex\.com/"[^>]*>link</a>}, response.body)
   end
 

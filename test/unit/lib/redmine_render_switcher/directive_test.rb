@@ -8,7 +8,7 @@ class RedmineRenderSwitcherDirectiveTest < ActiveSupport::TestCase
     { id: "V-02", text: "<!-- render_switcher: markdown -->\n\n## A\n", expected: "common_mark" },
     { id: "V-03", text: "<!--render_switcher:textile-->\n\nh2. A\n", expected: "textile" },
     { id: "V-04", text: "<!-- RENDER_SWITCHER: TEXTILE -->\n\nh2. A\n", expected: "textile" },
-    { id: "V-05", text: "本文の先頭行\n<!-- render_switcher: textile -->\n", expected: nil },
+    { id: "V-05", text: "A first line of body text\n<!-- render_switcher: textile -->\n", expected: nil },
     { id: "V-06", text: "<!-- render_switcher: html -->\n\nh2. A\n", expected: nil },
     { id: "V-07", text: "{{render_switcher_textile}}\n\nh2. A\n", expected: nil },
     { id: "V-08", text: "<!-- render_switcher: textile -->", expected: "textile" },

@@ -29,7 +29,14 @@ module RedmineRenderSwitcher
       singleton.prepend(self)
     end
 
-    # Returns Redmine's cache key with the detector generation appended.
+    # Returns Redmine's cache key with the detection inputs appended.
+    #
+    # Both halves of the verdict have to be in the key. {Detector::VERSION} covers
+    # the detection *code*, and the configured threshold covers the one input to
+    # the same decision that an administrator can change at runtime: raising or
+    # lowering it moves texts across the line between a detected format and the
+    # site format. Core caches formatted text with no expiry, so an entry left
+    # behind by a threshold change would be served for good.
     #
     # A nil key means Redmine does not want this text cached at all (a new record,
     # for instance). That is an ordinary outcome of building a key, so it is passed
@@ -45,7 +52,7 @@ module RedmineRenderSwitcher
       key = super
       return key if key.nil? || !PluginSettings.auto_detect_enabled?
 
-      "#{key}-rs#{Detector::VERSION}"
+      "#{key}-rs#{Detector::VERSION}t#{PluginSettings.score_threshold}"
     end
   end
 end
