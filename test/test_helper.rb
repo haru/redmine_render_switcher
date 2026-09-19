@@ -4,9 +4,19 @@ require_relative "../../../test/test_helper"
 # Measure C0 coverage over this plugin's own sources only. Without this filter the
 # Redmine core sources loaded by the helper above dominate the denominator and the
 # 90% floor stops meaning anything.
+#
+# The report is written inside the plugin (the CI build copies it out from there) as HTML
+# plus a Cobertura coverage.xml for the coverage summary and Codecov.
 if defined?(SimpleCov) && ENV["COVERAGE"]
+  require "simplecov-cobertura"
+
   SimpleCov.start do
     add_filter %r{^(?!/?plugins/redmine_render_switcher/lib)}
+    coverage_dir File.expand_path("../coverage", __dir__)
+    formatter SimpleCov::Formatter::MultiFormatter.new([
+      Redmine::Coverage::HtmlFormatter,
+      SimpleCov::Formatter::CoberturaFormatter
+    ])
   end
 end
 

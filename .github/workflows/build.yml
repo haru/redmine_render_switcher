@@ -66,7 +66,7 @@ jobs:
       - name: Code size summary
         continue-on-error: true
         run: |
-          { echo "## 📊 Code size"; cloc --md app lib assets/javascripts; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "## 📊 Code size"; cloc --md app lib; } >> "$GITHUB_STEP_SUMMARY"
 
   build:
     permissions:
@@ -74,8 +74,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    # Supported Matrix:
-    # Redmine 6.0-stable: Ruby 3.1, 3.2, 3.3
+    # Supported Matrix (Ruby 3.1 is out: the detector uses Data.define, added in Ruby 3.2):
+    # Redmine 6.0-stable: Ruby 3.2, 3.3
     # Redmine 6.1-stable: Ruby 3.2, 3.3, 3.4
     # Redmine 7.0-stable: Ruby 3.2, 3.3, 3.4, 4.0
     # Redmine master: Ruby 3.3, 3.4, 4.0
@@ -83,21 +83,15 @@ jobs:
       max-parallel: 10
       matrix:
         db: [sqlite3, mysql, postgres]
-        ruby_version: ["3.1", "3.2", "3.3", "3.4", "4.0"]
+        ruby_version: ["3.2", "3.3", "3.4", "4.0"]
         redmine_version: [6.0-stable, 6.1-stable, 7.0-stable, master]
         exclude:
           - ruby_version: "3.4"
             redmine_version: 6.0-stable
           - ruby_version: "4.0"
             redmine_version: 6.0-stable
-          - ruby_version: "3.1"
-            redmine_version: 6.1-stable
           - ruby_version: "4.0"
             redmine_version: 6.1-stable
-          - ruby_version: "3.1"
-            redmine_version: 7.0-stable
-          - ruby_version: "3.1"
-            redmine_version: master
           - ruby_version: "3.2"
             redmine_version: master
     services:
@@ -134,7 +128,8 @@ jobs:
         run: bash -x ./.github/build-scripts/build.sh
       - name: Enforce YARD Documentation Coverage
         run: |
-          output=$(bundle exec yard stats --list-undoc | tee /dev/stderr)
+          gem install yard
+          output=$(yard stats --list-undoc | tee /dev/stderr)
           if ! printf '%s' "$output" | grep -q "100.00%"; then
             echo "YARD documentation coverage is below 100%. See report above." >&2
             exit 1
@@ -162,8 +157,8 @@ jobs:
 
   notify:
     name: Slack Notification on Failure
-    needs: [lint, build, javascript]
-    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure' || needs.javascript.result == 'failure')
+    needs: [lint, build]
+    if: always() && (needs.lint.result == 'failure' || needs.build.result == 'failure')
     runs-on: ubuntu-latest
     steps:
       - name: Slack Notification
