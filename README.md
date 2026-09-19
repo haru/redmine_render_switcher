@@ -1,6 +1,10 @@
 # Redmine Render Switcher Plugin
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![build](https://github.com/haru/redmine_render_switcher/actions/workflows/build.yml/badge.svg)](https://github.com/haru/redmine_render_switcher/actions/workflows/build.yml)
+[![Maintainability](https://qlty.sh/gh/haru/projects/redmine_render_switcher/maintainability.svg)](https://qlty.sh/gh/haru/projects/redmine_render_switcher)
+[![codecov](https://codecov.io/gh/haru/redmine_render_switcher/graph/badge.svg?token=Rrwokq9ntL)](https://codecov.io/gh/haru/redmine_render_switcher)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/haru/redmine_render_switcher)
 ![Redmine](https://img.shields.io/badge/redmine->=6.0-blue?logo=redmine&logoColor=%23B32024&labelColor=f0f0f0&link=https%3A%2F%2Fwww.redmine.org)
 
 The Redmine Render Switcher Plugin detects whether each text is written in **Textile** or **Markdown** and renders it with the matching formatter. A site with years of Textile content can let its users write new content in Markdown, without converting a single existing page.
