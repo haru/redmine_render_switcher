@@ -1,42 +1,17 @@
-# EXAMPLE USAGE:
-#
-#   Refer for explanation to following link:
-#   https://lefthook.dev/configuration/
-#
-# pre-push:
-#   jobs:
-#     - name: packages audit
-#       tags:
-#         - frontend
-#         - security
-#       run: yarn audit
-#
-#     - name: gems audit
-#       tags:
-#         - backend
-#         - security
-#       run: bundle audit
-#
-# pre-commit:
-#   parallel: true
-#   jobs:
-#     - run: yarn eslint {staged_files}
-#       glob: "*.{js,ts,jsx,tsx}"
-#
-#     - name: rubocop
-#       glob: "*.rb"
-#       exclude:
-#         - config/application.rb
-#         - config/routes.rb
-#       run: bundle exec rubocop --force-exclusion -- {all_files}
-#
-#     - name: govet
-#       files: git ls-files -m
-#       glob: "*.go"
-#       run: go vet -- {files}
-#
-#     - script: "hello.js"
-#       runner: node
-#
-#     - script: "hello.go"
-#       runner: go run
+# Lefthook configuration
+# https://lefthook.dev/configuration/
+
+commit-msg:
+  jobs:
+    - name: strip-claude-attribution
+      run: |
+        ruby -e '
+          file = ARGV[0]
+          msg = File.binread(file)
+          [
+            /^Co-Authored-By:.*Claude.*\n?/i,
+            /^Claude-Session:.*\n?/i,
+            /^.*Generated with.*Claude Code.*\n?/i,
+          ].each { |re| msg = msg.gsub(re, "") }
+          File.binwrite(file, msg.sub(/\n*\z/, "\n"))
+        ' "{1}"
