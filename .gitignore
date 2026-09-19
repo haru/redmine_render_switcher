@@ -69,3 +69,4 @@ yarn-debug.log*
 
 .devcontainer/mysql-data
 .devcontainer/postgres-data
+.yardoc/

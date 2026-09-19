@@ -1,3 +1,0 @@
-= redmine_render_switcher
-
-Description goes here
