@@ -1,0 +1,10 @@
+en:
+  redmine_render_switcher:
+    settings:
+      auto_detect_enabled: "Detect the format of each text"
+      auto_detect_enabled_description: "Render each text with the formatter that matches how it is actually written, instead of always using the site text formatting. Turn this off to get exactly the behaviour of a Redmine without this plugin."
+      score_threshold: "Detection threshold"
+      score_threshold_description: "How far the Textile and Markdown scores must differ before the detected format is used. Below this margin the site text formatting is kept. The default is 2; a higher value detects less often and more confidently."
+      directive_heading: "Forcing the format of one page"
+      directive_description: "Put one of these on the very first line of the body to decide that page yourself. Follow it with a blank line, otherwise Textile numbers the sections one off."
+      directive_examples: "<!-- render_switcher: textile --> or <!-- render_switcher: markdown -->"
