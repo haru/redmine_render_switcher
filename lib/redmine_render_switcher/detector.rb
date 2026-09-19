@@ -42,6 +42,10 @@ module RedmineRenderSwitcher
     # It carries the verdict and the evidence behind it, and deliberately does not
     # carry the text, so that logging a result can never leak page content.
     #
+    # It is a keyword Struct with its writers removed and each instance frozen,
+    # rather than a +Data+, because +Data+ arrived in Ruby 3.2 and Redmine 6.0 still
+    # supports Ruby 3.1.
+    #
     # @!attribute [r] format
     #   @return [String, nil] {TEXTILE}, {COMMON_MARK}, or nil when undecided.
     # @!attribute [r] textile_score
@@ -50,7 +54,17 @@ module RedmineRenderSwitcher
     #   @return [Integer] how much the text looks like Markdown.
     # @!attribute [r] reason
     #   @return [Symbol] :directive, :score, :below_threshold or :no_signal.
-    Result = Data.define(:format, :textile_score, :markdown_score, :reason) do
+    Result = Struct.new(:format, :textile_score, :markdown_score, :reason, keyword_init: true) do
+      members.each { |member| undef_method(:"#{member}=") }
+
+      # Builds the result from keywords and freezes it.
+      #
+      # @param attributes [Hash{Symbol => Object}] the four members, by name.
+      def initialize(**attributes)
+        super
+        freeze
+      end
+
       # The result of an explicit directive.
       #
       # A directive is read before any scoring happens, so there is no evidence to

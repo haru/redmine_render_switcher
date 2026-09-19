@@ -27,7 +27,10 @@ Prepend a `CacheKey` module to the **singleton class** of
 `Redmine::WikiFormatting`:
 
 - if `super` returns `nil`, return `nil`;
-- otherwise append `-rs#{Detector::VERSION}` to the string.
+- otherwise append `-rs#{Detector::VERSION}t#{PluginSettings.score_threshold}` to
+  the string. The version covers the detection code; the threshold covers the one
+  input to the same verdict that an administrator can change at runtime, so
+  changing it must also invalidate cached HTML.
 
 It appends to `super` rather than rebuilding the key, and uses no `rescue`; the
 `nil` branch is the normal path. (S001, S002)
@@ -46,7 +49,10 @@ breaks existing Redmine behaviour. (S001, S002)
 
 This is the second coupling point, so **ADR-0002**
 (`docs/adr/0002-add-detector-version-to-formatted-text-cache-key.md`) is
-required by Constitution principle I. (S001, S002)
+required by Constitution principle I. The threshold half of the key was added
+afterwards and is recorded in **ADR-0004**
+(`docs/adr/0004-add-score-threshold-to-formatted-text-cache-key.md`), which
+supersedes ADR-0002. (S001, S002)
 
 ## See also
 

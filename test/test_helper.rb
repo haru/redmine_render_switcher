@@ -5,6 +5,8 @@ require_relative "../../../test/test_helper"
 # Redmine core sources loaded by the helper above dominate the denominator and the
 # 90% floor stops meaning anything.
 #
+# The 90% C0 floor is enforced here: a run below it exits non-zero, so CI fails.
+#
 # The report is written inside the plugin (the CI build copies it out from there) as HTML
 # plus a Cobertura coverage.xml for the coverage summary and Codecov.
 if defined?(SimpleCov) && ENV["COVERAGE"]
@@ -13,6 +15,7 @@ if defined?(SimpleCov) && ENV["COVERAGE"]
   SimpleCov.start do
     add_filter %r{^(?!/?plugins/redmine_render_switcher/lib)}
     coverage_dir File.expand_path("../coverage", __dir__)
+    minimum_coverage 90
     formatter SimpleCov::Formatter::MultiFormatter.new([
       SimpleCov::Formatter::HTMLFormatter,
       SimpleCov::Formatter::CoberturaFormatter

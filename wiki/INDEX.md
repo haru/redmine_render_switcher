@@ -11,7 +11,7 @@ page files, not here.
 
 ## decision
 - [Why patch the formatters instead of registering a format](./pages/why-patch-formatters-not-register-format.md) — Approach B chosen, Approach A rejected
-- [Detector version in the formatted-text cache key](./pages/cache-key-detector-version.md) — `CacheKey` on the WikiFormatting singleton; ADR-0002
+- [Detector version in the formatted-text cache key](./pages/cache-key-detector-version.md) — `CacheKey` on the WikiFormatting singleton; ADR-0002, ADR-0004
 - [Explicit directive — HTML comment form only](./pages/directive-html-comment-form.md) — no stripping; blank line needed after it in Textile
 
 ## component

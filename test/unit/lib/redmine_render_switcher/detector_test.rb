@@ -361,6 +361,18 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
 
       assert_raises(NoMethodError) { result.format = "common_mark" }
     end
+
+    # Ruby 3.1 has no Data, so a keyword Struct stands in for it. A Struct is
+    # writable through its index operator as well as through its setters.
+    should "reject modification through the index writer too" do
+      result = RedmineRenderSwitcher::Detector.detect(TEXTILE_TYPICAL, threshold: DEFAULT_THRESHOLD)
+
+      assert_raises(NoMethodError, FrozenError) { result[:format] = "common_mark" }
+    end
+
+    should "be built from keywords only" do
+      assert_raises(ArgumentError) { RedmineRenderSwitcher::Detector::Result.new("textile", 0, 0, :directive) }
+    end
   end
 
   # FR-021: every detection is explainable from the debug log, and only from it.

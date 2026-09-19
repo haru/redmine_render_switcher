@@ -35,5 +35,5 @@ end
 end
 
 # Second coupling point: the cache key is built before any formatter exists, so
-# the detector generation has to be added from here (see ADR-0002).
+# the detector generation has to be added from here (see ADR-0002 and ADR-0004).
 RedmineRenderSwitcher::CacheKey.prepend_to(Redmine::WikiFormatting.singleton_class)

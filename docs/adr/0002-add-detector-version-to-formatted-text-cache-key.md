@@ -1,6 +1,6 @@
 # ADR-0002: Add the detector version to the formatted-text cache key
 
-- **Status**: Accepted
+- **Status**: Superseded by [ADR-0004](./0004-add-score-threshold-to-formatted-text-cache-key.md)
 - **Date**: 2026-09-19
 
 ## Context

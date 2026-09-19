@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-The whole plugin is ~640 lines (mostly YARD comments) in `lib/redmine_render_switcher/`, wired up from `init.rb`. It couples to Redmine core at exactly **two points** (ADR-0001, ADR-0002):
+The whole plugin is ~640 lines (mostly YARD comments) in `lib/redmine_render_switcher/`, wired up from `init.rb`. It couples to Redmine core at exactly **two points** (ADR-0001, ADR-0002, ADR-0004):
 
 1. **`AutoSwitch`** is prepended to both `Redmine::WikiFormatting::Textile::Formatter` and `…::CommonMark::Formatter`. It overrides only the five-method formatter contract (`initialize(text, *options)`, `to_html`, `extract_sections`, `get_section`, `update_section`; Redmine 6.0/6.1 construct formatters with the text alone and 7.0+ adds an options hash, so the extra constructor arguments are forwarded untouched — ADR-0003), never formatter internals such as `@filter`. If the detected format differs from the formatter's own, it builds the *other* formatter via `Redmine::WikiFormatting.formatter_for` and delegates. When detection is inconclusive it returns `super` — the site setting's formatter. `Setting.text_formatting` keeps its normal value (`textile` / `common_mark`); no new format is registered.
 2. **`CacheKey`** is prepended to `Redmine::WikiFormatting.singleton_class` and appends `-rs<Detector::VERSION>t<threshold>` to `cache_key_for`. This is needed because the cache lookup happens *before* any formatter exists. It passes `nil` through, and adds nothing when auto-detect is off (disabled must be byte-identical to not installed).
@@ -33,7 +33,7 @@ Decision order inside `AutoSwitch`: setting off → re-entrancy flag set → not
 
 ## Project documents — what to read
 
-- **`docs/adr/`** — the design record (ADR-0001 patch formatters instead of registering a format; ADR-0002 detector version in the cache key; ADR-0003 forward the formatter constructor's arguments untouched). Append-only; index in `docs/adr/README.md`. Read before changing either coupling point.
+- **`docs/adr/`** — the design record (ADR-0001 patch formatters instead of registering a format; ADR-0002 detector version in the cache key, superseded by ADR-0004 which adds the score threshold; ADR-0003 forward the formatter constructor's arguments untouched). Append-only; index in `docs/adr/README.md`. Read before changing either coupling point.
 - **`.specify/memory/constitution.md`** (v1.1.0) — six principles; it **governs where it disagrees with this file**. The three non-negotiable ones: minimal core surface (any new `prepend`/patched core class needs an ADR), test-first, errors surface immediately.
 - **`docs/directive-usage.md`** — user-facing directive documentation.
 - **`specs/001-auto-format-detection/`** — spec-kit `spec.md`, `plan.md`, `tasks.md`, `data-model.md`. Gitignored, and written in **Japanese** (`specs/CLAUDE.md`). `.specify/feature.json` points at the active feature.

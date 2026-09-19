@@ -9,9 +9,13 @@ updated: 2026-09-19
 
 ## Contract surface
 
-- Defines exactly five methods: `initialize(text, options = {})`, `to_html`,
+- Defines exactly five methods: `initialize(text, *options)`, `to_html`,
   `extract_sections`, `get_section`, `update_section`. It never touches `@filter`
-  or other formatter internals. (S001, S002)
+  or other formatter internals. The constructor forwards its extra arguments
+  untouched because Redmine 6.0/6.1 build a formatter from the text alone while
+  7.0+ adds an options hash
+  ([ADR-0003](../../docs/adr/0003-forward-constructor-arguments-untouched.md)).
+  (S001, S002)
 - The methods come from different places in each formatter, but `prepend` wins
   over both. `CommonMark::Formatter` gets its section methods from
   `SectionHelper`. `Textile::Formatter` also includes `SectionHelper` but
