@@ -14,7 +14,7 @@ if defined?(SimpleCov) && ENV["COVERAGE"]
     add_filter %r{^(?!/?plugins/redmine_render_switcher/lib)}
     coverage_dir File.expand_path("../coverage", __dir__)
     formatter SimpleCov::Formatter::MultiFormatter.new([
-      Redmine::Coverage::HtmlFormatter,
+      SimpleCov::Formatter::HTMLFormatter,
       SimpleCov::Formatter::CoberturaFormatter
     ])
   end

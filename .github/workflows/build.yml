@@ -80,6 +80,7 @@ jobs:
     # Redmine 7.0-stable: Ruby 3.2, 3.3, 3.4, 4.0
     # Redmine master: Ruby 3.3, 3.4, 4.0
     strategy:
+      fail-fast: false
       max-parallel: 10
       matrix:
         db: [sqlite3, mysql, postgres]
