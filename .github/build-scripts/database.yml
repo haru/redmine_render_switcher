@@ -1,0 +1,19 @@
+# The plugin has no tables of its own; Redmine core only needs some database
+# to boot the test suite, so CI uses SQLite alone.
+default: &default
+  adapter: sqlite3
+  pool: 5
+  timeout: 5000
+  database: db/redmine.sqlite3
+
+development:
+  <<: *default
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test:
+  <<: *default
+
+production:
+  <<: *default

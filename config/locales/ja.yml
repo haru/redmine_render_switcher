@@ -1,0 +1,10 @@
+ja:
+  redmine_render_switcher:
+    settings:
+      auto_detect_enabled: "本文の書式を判別する"
+      auto_detect_enabled_description: "サイトの書式設定をそのまま使うのではなく、本文が実際に書かれている書式で表示します。無効にすると、本プラグインを導入していない Redmine とまったく同じ動作になります。"
+      score_threshold: "判定しきい値"
+      score_threshold_description: "Textile と Markdown の得点差がこの値以上のときだけ、判別した書式を使います。これ未満のときはサイトの書式設定のまま表示します。既定値は 2 で、大きくするほど判別は慎重になります。"
+      directive_heading: "ページ単位で書式を指定する"
+      directive_description: "本文のいちばん先頭の行に次のどちらかを置くと、そのページの書式を明示的に指定できます。指定行の直後には空行を入れてください。空行がないと Textile のセクション番号が 1 つずれます。"
+      directive_examples: "<!-- render_switcher: textile --> または <!-- render_switcher: markdown -->"

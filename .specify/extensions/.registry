@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "review": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:42639f787f7b1cd7f8cb4c5373536c846b084913e712867563b8da0707263058",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.review.run",
+          "speckit.review.code",
+          "speckit.review.comments",
+          "speckit.review.tests",
+          "speckit.review.errors",
+          "speckit.review.types",
+          "speckit.review.simplify"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-09-19T05:52:43.680717+00:00"
+    },
+    "wiki": {
+      "version": "1.0.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "community"
+      },
+      "manifest_hash": "sha256:0b4b9b3b306ccd3cbf9094d93cada6f5b10cafcc79e330867356cda0a53e137a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.wiki.init",
+          "speckit.wiki.ingest",
+          "speckit.wiki.query",
+          "speckit.wiki.lint",
+          "speckit.wiki.status"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-09-19T05:55:54.159736+00:00"
+    }
+  }
+}
