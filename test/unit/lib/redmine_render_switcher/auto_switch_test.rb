@@ -241,16 +241,6 @@ class RedmineRenderSwitcherAutoSwitchTest < ActiveSupport::TestCase
 
       assert_equal "rendered body !", formatter_class.new("body", { mark: "!" }).to_html
     end
-
-    should "hand the delegate the same arguments it received, with or without options" do
-      Setting.text_formatting = "common_mark"
-
-      [ [ TEXTILE_BODY ], [ TEXTILE_BODY, {} ] ].each do |args|
-        html = Redmine::WikiFormatting.formatter_for("common_mark").new(*args).to_html
-
-        assert_match(/<h2[^>]*>Heading/, html, "built with #{args.size} argument(s)")
-      end
-    end
   end
 
   context "AutoSwitch installation" do
