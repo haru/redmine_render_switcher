@@ -1,0 +1,31 @@
+<%# Plugin settings form. Redmine renders it inside div.box.tabular.settings and %>
+<%# wraps it in the form that posts to settings#plugin, so this partial only %>
+<%# supplies the fields. No JavaScript and no colours of its own. %>
+<% enabled_key = RedmineRenderSwitcher::PluginSettings::AUTO_DETECT_ENABLED_KEY %>
+<% threshold_key = RedmineRenderSwitcher::PluginSettings::SCORE_THRESHOLD_KEY %>
+
+<p>
+  <label for="settings_<%= enabled_key %>"><%= t("redmine_render_switcher.settings.auto_detect_enabled") %></label>
+  <%= hidden_field_tag "settings[#{enabled_key}]", "0", id: nil %>
+  <%= check_box_tag "settings[#{enabled_key}]", "1",
+                    RedmineRenderSwitcher::PluginSettings.auto_detect_enabled?,
+                    id: "settings_#{enabled_key}" %>
+  <em class="info"><%= t("redmine_render_switcher.settings.auto_detect_enabled_description") %></em>
+</p>
+
+<p>
+  <label for="settings_<%= threshold_key %>"><%= t("redmine_render_switcher.settings.score_threshold") %></label>
+  <%= number_field_tag "settings[#{threshold_key}]",
+                       RedmineRenderSwitcher::PluginSettings.score_threshold,
+                       min: 0, size: 6, id: "settings_#{threshold_key}" %>
+  <em class="info"><%= t("redmine_render_switcher.settings.score_threshold_description") %></em>
+</p>
+
+<p>
+  <label><%= t("redmine_render_switcher.settings.directive_heading") %></label>
+  <em class="info">
+    <%= t("redmine_render_switcher.settings.directive_description") %>
+    <br />
+    <code><%= t("redmine_render_switcher.settings.directive_examples") %></code>
+  </em>
+</p>

@@ -1,2 +1,30 @@
 # Load the Redmine helper
-require_relative '../../../test/test_helper'
+require_relative "../../../test/test_helper"
+
+# Measure C0 coverage over this plugin's own sources only. Without this filter the
+# Redmine core sources loaded by the helper above dominate the denominator and the
+# 90% floor stops meaning anything.
+if defined?(SimpleCov) && ENV["COVERAGE"]
+  SimpleCov.start do
+    add_filter %r{^(?!/?plugins/redmine_render_switcher/lib)}
+  end
+end
+
+# shoulda-context 2.0.0 overrides Rails::TestUnitReporter#format_rerun_snippet with a
+# version that calls a bare `executable`. Railties 8.1 moved that to a class-level
+# accessor, so the override raises NameError while reporting, and every genuine failure
+# is replaced by a crash inside the reporter. Rails' own implementation already handles
+# what the override was written to fix, so restore it.
+if defined?(Rails::TestUnitReporter)
+  Rails::TestUnitReporter.class_eval do
+    def format_rerun_snippet(result)
+      location, line = if result.respond_to?(:source_location)
+                         result.source_location
+      else
+                         result.method(result.name).source_location
+      end
+
+      "#{self.class.executable} #{relative_path_for(location)}:#{line}"
+    end
+  end
+end
