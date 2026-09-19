@@ -20,6 +20,27 @@
       },
       "registered_skills": [],
       "installed_at": "2026-09-19T05:52:43.680717+00:00"
+    },
+    "wiki": {
+      "version": "1.0.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "community"
+      },
+      "manifest_hash": "sha256:0b4b9b3b306ccd3cbf9094d93cada6f5b10cafcc79e330867356cda0a53e137a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.wiki.init",
+          "speckit.wiki.ingest",
+          "speckit.wiki.query",
+          "speckit.wiki.lint",
+          "speckit.wiki.status"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-09-19T05:55:54.159736+00:00"
     }
   }
 }
