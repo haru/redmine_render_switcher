@@ -16,6 +16,7 @@ Redmine::Plugin.register :redmine_render_switcher do
   version RedmineRenderSwitcher::VERSION
   url "https://github.com/haru/redmine_render_switcher"
   author_url "https://github.com/haru"
+  requires_redmine version_or_higher: "6.0.0"
 
   # The partial name carries the plugin name because Redmine warns when two
   # plugins claim the same one.
