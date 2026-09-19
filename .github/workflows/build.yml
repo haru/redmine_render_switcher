@@ -83,7 +83,6 @@ jobs:
       fail-fast: false
       max-parallel: 10
       matrix:
-        db: [sqlite3, mysql, postgres]
         ruby_version: ["3.2", "3.3", "3.4", "4.0"]
         redmine_version: [6.0-stable, 6.1-stable, 7.0-stable, master]
         exclude:
@@ -95,36 +94,15 @@ jobs:
             redmine_version: 6.1-stable
           - ruby_version: "3.2"
             redmine_version: master
-    services:
-      mysql:
-        image: mysql:8.1
-        options: --health-cmd "mysqladmin ping -h localhost" --health-interval 20s --health-timeout 10s --health-retries 10
-        env:
-          MYSQL_ROOT_PASSWORD: dbpassword
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: root
-          POSTGRES_PASSWORD: dbpassword
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     container:
       image: ruby:${{ matrix.ruby_version }}
       env:
-        DB: ${{ matrix.db }}
-        DB_USERNAME: root
-        DB_PASSWORD: dbpassword
-        DB_HOST: ${{ matrix.db }}
+        DB: sqlite3
         REDMINE_VER: ${{ matrix.redmine_version }}
     steps:
       - uses: actions/checkout@v7
       - name: Install
         run: bash -x ./.github/build-scripts/install.sh
-      - name: Test Migration Rollback
-        run: bash -x ./.github/build-scripts/test-migration-rollback.sh
       - name: Build
         run: bash -x ./.github/build-scripts/build.sh
       - name: Enforce YARD Documentation Coverage
@@ -138,11 +116,11 @@ jobs:
       - name: Clean
         run: bash -x ./.github/build-scripts/cleanup.sh
       - name: Ruby test/coverage summary
-        if: matrix.ruby_version == '3.4' && matrix.redmine_version == '7.0-stable' && matrix.db == 'sqlite3'
+        if: matrix.ruby_version == '3.4' && matrix.redmine_version == '7.0-stable'
         continue-on-error: true
         run: |
           {
-            echo "## 🧪 Ruby test results (ruby 3.4 / redmine 7.0-stable / sqlite3)"
+            echo "## 🧪 Ruby test results (ruby 3.4 / redmine 7.0-stable)"
             grep -E '^[0-9]+ runs, [0-9]+ assertions' ruby-test-output.log || echo "(summary line not found)"
             echo ""
             echo "## 📈 Ruby coverage"

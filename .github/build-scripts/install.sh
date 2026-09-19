@@ -75,6 +75,3 @@ bundle install
 # run redmine database migrations
 bundle exec rake db:create
 bundle exec rake db:migrate
-
-# run plugin database migrations
-bundle exec rake redmine:plugins:migrate
