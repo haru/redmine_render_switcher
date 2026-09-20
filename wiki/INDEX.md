@@ -7,18 +7,24 @@ page files, not here.
 ## concept
 - [Auto format detection — overview](./pages/auto-format-detection-overview.md) — what the plugin does, chosen approach, scope, layout; start here
 - [Section-edit numbering must agree with the rendered format](./pages/section-numbering-consistency.md) — why detection and delegate are memoized per instance
-- [Constitution gates and ADR obligations](./pages/constitution-gates-and-adr-obligations.md) — six principles as applied; ADR-0001/0002 owed
+- [Constitution gates and ADR obligations](./pages/constitution-gates-and-adr-obligations.md) — six principles as applied; ADR-0001/0002 owed, ADR-0005 for the detector revision
 
 ## decision
 - [Why patch the formatters instead of registering a format](./pages/why-patch-formatters-not-register-format.md) — Approach B chosen, Approach A rejected
 - [Detector version in the formatted-text cache key](./pages/cache-key-detector-version.md) — `CacheKey` on the WikiFormatting singleton; ADR-0002, ADR-0004
 - [Explicit directive — HTML comment form only](./pages/directive-html-comment-form.md) — no stripping; blank line needed after it in Textile
+- [Score new detector evidence once per block](./pages/detector-score-once-per-block.md) — weights, why per block, two-line list floor; ADR-0005
+- [Detector scan structure — four scans plus one masking machine](./pages/detector-scan-structure.md) — separate context scans, single-pass masking, cost 3.39%
 
 ## component
 - [AutoSwitch — the prepended formatter module](./pages/auto-switch-module.md) — five contract methods, memoized delegation, kill switch
-- [Detector design](./pages/detector-design.md) — scoring steps, `#` line context rule, `Result`, `VERSION`
+- [Detector design](./pages/detector-design.md) — scoring steps, four context rules, `Result`, `VERSION`
+- [Detector line patterns and their traps](./pages/detector-line-patterns.md) — the seven regex constants, `\s*\z`, anchoring, unscored notation
 - [Plugin settings](./pages/plugin-settings.md) — two keys, string normalisation, partial naming
 - [Plugin logger](./pages/plugin-logger.md) — `RedmineRenderSwitcher::Logger`, debug-only, block form
+
+## reference
+- [Detector revision — accepted behaviour changes and test rebuilds](./pages/detector-revision-accepted-changes.md) — verdicts that moved, rows D-15/D-17/EXACT_TIE rebuilt
 
 ## howto
 - [Applying the prepend safely — reload and recursion guards](./pages/prepend-and-reentrancy-guards.md) — no nested `to_prepare`, name-based double-prepend guard, `Thread.current` flag

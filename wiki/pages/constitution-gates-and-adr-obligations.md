@@ -1,8 +1,8 @@
 ---
 title: Constitution gates and ADR obligations
 type: concept
-sources: [S001, S002]
-updated: 2026-09-19
+sources: [S001, S002, S004]
+updated: 2026-09-20
 ---
 
 # Constitution gates and ADR obligations
@@ -31,6 +31,14 @@ Principle I is the only conditional pass. The plan adds two coupling points, so
 it owes **ADR-0001** ([formatter patching](./why-patch-formatters-not-register-format.md))
 and **ADR-0002** ([cache key](./cache-key-detector-version.md)). The design
 phase found no third coupling point and no `rescue` site. (S001, S002)
+
+## Detector rule revision (feature 002)
+
+The revision adds no `prepend` and no patched core class, so Principle I passes
+without a coupling-point ADR. FR-002 still requires **ADR-0005** for the scoring
+policy; block scoring and the two-line list floor go in its Consequences, and
+whether they deserve an ADR of their own is put to the user, not decided
+unilaterally. No `rescue` is added (Principle III). (S004)
 
 ## Work the gates commit to
 
