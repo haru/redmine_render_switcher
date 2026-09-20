@@ -64,6 +64,17 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
     }
   end
 
+  # Renders +text+ with the site format set to +format+, so a test can check what
+  # a body looks like under both settings.
+  #
+  # @param format [String] "textile" or "common_mark".
+  # @param text [String] the body to render.
+  # @return [String] the rendered HTML.
+  def render_with_site_format(format, text)
+    Setting.text_formatting = format
+    textilizable(text)
+  end
+
   context "with the site set to Markdown and a Textile body" do
     should "render Textile everywhere Redmine renders formatted text" do
       formatted_text_holders.each do |label, (object, attribute)|
@@ -72,6 +83,148 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
         assert_match(/<h2[^>]*>Heading/, html, "#{label} was not rendered as Textile")
         assert_match(%r{<a href="https://ex\.com/"[^>]*>link</a>}, html,
                      "#{label} lost its Textile link")
+      end
+    end
+  end
+
+  # FR-021: +**+ says nothing about the format, so a body that only uses it is left
+  # to the site setting instead of being pushed to Markdown.
+  context "with a body whose only notation is ** and *" do
+    setup { @body = "This is an **important** *change*." }
+
+    should "follow the site setting when it is Textile" do
+      html = render_with_site_format("textile", @body)
+
+      assert_includes html, "<b>important</b>"
+      assert_includes html, "<strong>change</strong>"
+      assert_not_includes html, "<em>"
+    end
+
+    should "follow the site setting when it is Markdown" do
+      html = render_with_site_format("common_mark", @body)
+
+      assert_includes html, "<strong>important</strong>"
+      assert_includes html, "<em>change</em>"
+    end
+
+    should "still render a Textile document that uses ** as Textile under either setting" do
+      body = "h1. Heading\n\nThis is **bold**.\n"
+
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, body), "<h1", format
+      end
+    end
+  end
+
+  # FR-021: what an indented code block quotes must not decide the format.
+  context "with Textile notation quoted in an indented code block" do
+    setup { @body = "Use *care* when quoting the old syntax:\n\n    \"link\":https://ex.com/\n\nEnd.\n" }
+
+    should "follow the site setting when it is Markdown" do
+      assert_includes render_with_site_format("common_mark", @body), "<em>care</em>"
+    end
+
+    should "follow the site setting when it is Textile" do
+      assert_includes render_with_site_format("textile", @body), "<strong>care</strong>"
+    end
+
+    should "put the indented block in a pre element under either setting" do
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, @body), "<pre", format
+      end
+    end
+  end
+
+  # FR-021: a table has to come out as a table under either setting.
+  context "with a table" do
+    should "render a table without a separator row as a table under either setting" do
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, "| Name | Value |\n| a | 1 |\n"), "<table", format
+      end
+    end
+
+    should "render a table with a separator row as a table under either setting" do
+      body = "| Name | Value |\n|---|---|\n| a | 1 |\n"
+
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, body), "<table", format
+      end
+    end
+
+    # A dash in a cell does not make the row a Markdown separator row, so the table
+    # stays a Textile one even on a Markdown site.
+    should "keep a Textile table with a dash in a cell a table under either setting" do
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, "| - | x |\n| a | b |\n"), "<table", format
+      end
+    end
+
+    # A single pipe row is too little evidence to name a format, so the detector
+    # misses it and the Markdown site renders it as it would any Markdown text. This
+    # pins the accepted limit of ADR-0005, not a behaviour worth defending: a
+    # detector that learns to read a lone row may change it.
+    should "leave a lone pipe row to the site setting" do
+      assert_not_includes render_with_site_format("common_mark", "| Name | Value |\n"), "<table"
+    end
+  end
+
+  # FR-021: an indented block under a Markdown heading is code, so the Textile it
+  # quotes must not turn the document into a Textile one.
+  context "with an indented code block under a Markdown heading" do
+    setup { @body = "## Usage\n\n    \"one\":https://ex.com/\n    \"two\":https://ex.org/\n" }
+
+    should "render the heading and the code block under either setting" do
+      %w[textile common_mark].each do |format|
+        html = render_with_site_format(format, @body)
+
+        assert_includes html, "<h2", format
+        assert_includes html, "<pre", format
+        assert_not_includes html, "<a href=\"https://ex.com/\"", format
+      end
+    end
+  end
+
+  # FR-021: notation that only Markdown reads as structure has to render as
+  # structure whichever format the site is set to.
+  context "with a Markdown list or heading" do
+    should "render a dash list as a list under either setting" do
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, "- faster\n- fewer queries\n"), "<ul>", format
+      end
+    end
+
+    should "render a numbered list as a list under either setting" do
+      %w[textile common_mark].each do |format|
+        html = render_with_site_format(format, "1. stop the server\n2. migrate the data\n")
+
+        assert_includes html, "<ol>", format
+      end
+    end
+
+    should "render a Setext heading as a heading under either setting" do
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, "Release notes\n=============\n"), "<h1", format
+      end
+    end
+
+    # Both formats read this the same way, so detection stays out of it and the
+    # site setting alone decides.
+    should "render an asterisk list as a list under either setting" do
+      %w[textile common_mark].each do |format|
+        assert_includes render_with_site_format(format, "* apple\n* orange\n"), "<ul>", format
+      end
+    end
+
+    # A Textile document with hand-written dashes stays Textile, whatever the site
+    # is set to: the dashes are not a list in Textile.
+    should "keep a Textile document with a dash list Textile under either setting" do
+      body = "h1. Notes\n\n- one\n- two\n- three\n- four\n- five\n"
+
+      %w[textile common_mark].each do |format|
+        html = render_with_site_format(format, body)
+
+        assert_includes html, "<h1", format
+        assert_not_includes html, "<ul>", format
       end
     end
   end

@@ -52,3 +52,4 @@ surrounding software changes.
 | [0002](./0002-add-detector-version-to-formatted-text-cache-key.md) | Add the detector version to the formatted-text cache key | Superseded by [ADR-0004](./0004-add-score-threshold-to-formatted-text-cache-key.md) | 2026-09-19 |
 | [0003](./0003-forward-constructor-arguments-untouched.md) | Forward the formatter constructor's arguments untouched | Accepted | 2026-09-19 |
 | [0004](./0004-add-score-threshold-to-formatted-text-cache-key.md) | Add the score threshold to the formatted-text cache key | Accepted | 2026-09-19 |
+| [0005](./0005-score-only-notation-that-renders-differently.md) | Score only notation that renders differently, one score per block, precision before recall | Accepted | 2026-09-19 |

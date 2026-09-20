@@ -22,18 +22,18 @@ This plugin removes the need for that. Existing Textile stays Textile, new Markd
 - **Section editing keeps working**: Editing a single wiki section behaves the same whichever format the page uses.
 - **Explicit override**: When the detector gets a page wrong, put one line at the top of the body to decide for that page yourself.
 - **Tunable**: Turn detection off site-wide, or adjust how confident the detector must be before it overrides the site setting.
-- **Cache-safe**: The detector version and threshold are part of Redmine's formatted-HTML cache key, so a change to either never serves stale output.
-- **Small footprint**: The plugin patches the two formatter classes only. It registers no new format and adds no database tables, so there are no migrations to run.
+- **Cache-safe**: Upgrading the plugin or changing the threshold never serves stale cached output.
+- **Small footprint**: The plugin registers no new text format and adds no database tables, so there are no migrations to run.
 
 ## 🔍 How It Works
 
-The detector scores the notation a text uses. Notation that only Textile understands (`h2.` headings, `"text":url` links, `!image.png!`, `bq.` quotes, `@code@`, `|_.` table headers) counts towards Textile. Notation that only Markdown understands (fenced code blocks, `[text](url)` links, `![alt](url)` images, `**bold**`, `` `code` ``, table separator rows) counts towards Markdown. Text inside code blocks is ignored, and a `#` at the start of a line is resolved from its neighbours: two or more in a row are a Textile numbered list, a lone one is a Markdown heading.
+The detector scores the notation a text uses. Notation that only Textile understands (`h2.` headings, `"text":url` links, `!image.png!`, `bq.` quotes, `@code@`, `|_.` table headers, and tables with no separator row: two or more lines of `| a | b |`) counts towards Textile. Notation that only Markdown understands (fenced code blocks, `[text](url)` links, `![alt](url)` images, `` `code` ``, dash and numbered lists of two or more lines, Setext headings underlined with `=`, and tables with a separator row) counts towards Markdown. Notation that both formats render the same way (`**bold**`, `_em_`, `> quote`, `* list`, `---`) is not counted at all. Text inside code blocks, including indented ones, is ignored, and a `#` at the start of a line is resolved from its neighbours: two or more in a row are a Textile numbered list, a lone one is a Markdown heading.
 
 The format with the higher score wins, provided it leads by at least the configured threshold. When the score is inconclusive — a short text, plain prose, or notation both formats share — Redmine's own text formatting setting applies, exactly as it would without the plugin.
 
 Detection takes well under a millisecond per text, a small fraction of the time Redmine spends rendering it.
 
-`Setting.text_formatting` keeps its ordinary value (`textile` or `common_mark`) and is the fallback whenever detection is inconclusive. The reasoning behind this design is recorded in [ADR-0001](docs/adr/0001-patch-formatters-instead-of-registering-a-format.md).
+`Setting.text_formatting` keeps its ordinary value (`textile` or `common_mark`) and is the fallback whenever detection is inconclusive.
 
 ## 📦 Installation
 
@@ -79,8 +79,9 @@ Follow it with a blank line. The directive beats every detection rule, it is an 
 ## ⚠️ Limitations
 
 - **One format per text.** A single body must be written in one format throughout. Mixing Textile and Markdown inside one text is not supported; whichever notation belongs to the other format is shown as plain text.
-- **Only the reading side is detected.** The editor toolbar, the syntax help, image paste, list auto-continuation and quoted replies follow the site text formatting. This is deliberate: it keeps the plugin's coupling to Redmine to a single point.
+- **Only the reading side is detected.** The editor toolbar, the syntax help, image paste, list auto-continuation and quoted replies follow the site text formatting.
 - **Short or ambiguous texts fall back to the site setting.** A one-line comment with no distinctive notation renders with the site text formatting. That is usually the right answer, and the directive is there for the cases where it is not.
+- **A single dash line is not a list.** A text with only one line starting with `- ` is not detected, because ordinary prose uses the same notation; it renders with the site text formatting. Two or more lines in a row count.
 - **File-driven rendering is affected too.** Browsing a `.textile` or `.md` file in a repository, and previewing an attachment, go through the same formatters. Only files whose extension contradicts their content are rendered differently.
 - **Two formats only.** Textile and CommonMark Markdown are supported. The plugin does not convert stored data and does not offer per-project or per-user settings.
 
