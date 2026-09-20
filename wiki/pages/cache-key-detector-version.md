@@ -1,8 +1,8 @@
 ---
 title: Detector version in the formatted-text cache key
 type: decision
-sources: [S001, S002]
-updated: 2026-09-19
+sources: [S001, S002, S003, S004]
+updated: 2026-09-20
 ---
 
 # Detector version in the formatted-text cache key
@@ -38,6 +38,14 @@ It appends to `super` rather than rebuilding the key, and uses no `rescue`; the
 When `auto_detect_enabled` is false, no version is appended, so keys equal the
 core's and the site behaves exactly as without the plugin (SC-005). See
 [AutoSwitch](./auto-switch-module.md). (S001)
+
+## Version history
+
+`Detector::VERSION` moved from 3 to 4 in the same change as the
+[detector rule revision](./detector-scan-structure.md), because that change moves
+the pattern tables, the masking and the context rules (FR-015, SC-012). Bump it
+whenever any of those move; the old HTML then stops being reused by itself.
+With the default threshold the key ends in `-rs4t2`. (S003, S004)
 
 ## Rejected alternatives
 
