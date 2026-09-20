@@ -30,7 +30,7 @@ module RedmineRenderSwitcher
     # The configured threshold is *not* covered here, because it is a setting
     # rather than a change to this code; {CacheKey} puts its current value in the
     # key separately.
-    VERSION = 4
+    VERSION = 5
 
     # Redmine's name for the Textile format.
     TEXTILE = "textile"
@@ -280,11 +280,12 @@ module RedmineRenderSwitcher
       # There are three kinds of block: a fenced one, a +<pre>+ one, and an indented
       # one. An indented block opens on an {INDENTED_LINE} that follows a blank line,
       # and runs on through further indented lines and any blank lines among them
-      # until a line that is neither. It is never opened when the last non-blank line
-      # above is a list item, blank lines in between or not, because there the indent
-      # continues the item and is not code. A +#+ line is not a list item here, so an
-      # indented block under a heading is code. Nothing inside a block is scored,
-      # whatever it looks like.
+      # until a line that is neither. It is never opened while the lines above it
+      # lead back to a list item through blank and indented lines alone — blank
+      # lines in between or not, one indented continuation paragraph or several —
+      # because there the indent continues the item and is not code. A +#+ line is
+      # not a list item here, so an indented block under a heading is code. Nothing
+      # inside a block is scored, whatever it looks like.
       #
       # The state that decides whether an indent opens a block is tracked from the
       # line as it was written, not from its masked form. A masked line is blank, so
@@ -307,8 +308,7 @@ module RedmineRenderSwitcher
           fence = FENCE_LINE.match?(line)
           blank = BLANK_LINE.match?(line)
           indented = INDENTED_LINE.match?(line)
-          # An indented block goes on only through indented and blank lines.
-          in_indent &&= blank || indented
+          in_indent &&= continues_block?(blank, indented)
 
           masked =
             if in_fence
@@ -332,21 +332,37 @@ module RedmineRenderSwitcher
               line
             end
 
-          prev_list = LIST_ITEM_LINE.match?(line) unless blank
+          prev_list = LIST_ITEM_LINE.match?(line) unless continues_block?(blank, indented)
           prev_blank = blank
           masked
         end.join
       end
 
+      # Tells whether +line+ continues what sits above it instead of starting
+      # something new: a blank line or an indented line does. It is the condition
+      # for a running indented block to go on, and it is also the condition under
+      # which the context of a list item survives: a blank line leaves that
+      # context alone and an indented line extends it with a continuation.
+      #
+      # @param blank [Boolean] whether the line is blank.
+      # @param indented [Boolean] whether the line is indented by four spaces or a
+      #   tab.
+      # @return [Boolean] true when the line carries the block or the list context
+      #   above it forward.
+      def continues_block?(blank, indented)
+        blank || indented
+      end
+
       # Tells whether +line+ opens an indented code block.
       #
-      # It must be indented, follow a blank line, and not follow a list item, whose
-      # continuation it would be.
+      # It must be indented, follow a blank line, and sit outside the context of a
+      # list item, whose continuation it would be. Blank lines and indented lines
+      # keep that context alive; any other non-blank line ends it.
       #
       # @param line [String] the line, as written.
       # @param prev_blank [Boolean] whether the line above it is blank.
-      # @param prev_list [Boolean] whether the last non-blank line above it is a list
-      #   item.
+      # @param prev_list [Boolean] whether the text above still sits in the context
+      #   of a list item.
       # @return [Boolean] true when a block opens here.
       def indented_block_start?(line, prev_blank, prev_list)
         INDENTED_LINE.match?(line) && prev_blank && !prev_list

@@ -254,6 +254,16 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     End paragraph.
   TEXT
 
+  # A list item followed by two indented continuation paragraphs, one blank line
+  # apart.
+  LIST_WITH_TWO_INDENTED_CONTINUATIONS = <<~'TEXT'
+    - item
+
+        still the item, part one
+
+        "link":https://ex.com/
+  TEXT
+
   # A Markdown table, a blank line, then a bare Textile table.
   MIXED_TABLES = <<~'TEXT'
     | Name | Value |
@@ -376,6 +386,11 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     # A blank line between a list item and its indented continuation: the indent
     # still belongs to the item, so it is not code and its content is scored.
     { id: "D-58", text: "- item\n\n    [the guide](https://ex.com/)\n", format: "common_mark",
+      reason: :score },
+    # A second indented continuation paragraph, after another blank line, still
+    # belongs to the list item: it is not code, so the Textile link it holds is
+    # scored.
+    { id: "D-62", text: LIST_WITH_TWO_INDENTED_CONTINUATIONS, format: "textile",
       reason: :score },
     # A Markdown heading is not a list item, so an indented block under it is code:
     # the Textile links it quotes must not decide the format.
@@ -668,10 +683,11 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
       assert_kind_of Integer, RedmineRenderSwitcher::Detector::VERSION
     end
 
-    # The ADR-0005 rule changes move verdicts, so HTML cached before them must not
-    # be reused. This value must never be lowered.
-    should "be at least 4 so that HTML cached before the ADR-0005 rule changes is not reused" do
-      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 4
+    # The ADR-0005 rule changes and the list-continuation masking fix both move
+    # verdicts, so HTML cached before them must not be reused. This value must
+    # never be lowered.
+    should "be at least 5 so that HTML cached before the ADR-0005 rule changes and the list-continuation fix is not reused" do
+      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 5
     end
   end
 end
