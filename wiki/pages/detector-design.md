@@ -1,8 +1,8 @@
 ---
 title: Detector design
 type: component
-sources: [S001, S002, S003, S004]
-updated: 2026-09-20
+sources: [S001, S002, S003, S004, S005]
+updated: 2026-10-31
 ---
 
 # Detector design
@@ -23,7 +23,7 @@ decision is explainable. (S001, S002)
 
 It also owns `Detector::VERSION`, which feeds the
 [cache key](./cache-key-detector-version.md); the rule revision bumped it from
-3 to 4, and it later moved to 5 and then to 6 with the ADR-0006 insertion pattern. (S002, S003)
+3 to 4, and it later moved to 5 and then to 6 with the ADR-0006 insertion pattern. (S002, S003, S005)
 
 ## Ambiguity is solved by context, not patterns
 
@@ -42,6 +42,8 @@ new bare pattern. (S004)
 - Decisive Textile: `h1.`–`h6.`, `"text":url`, `!image!`, `bq.`, `@code@`,
   `|_. header`. Decisive Markdown: fenced code, `[text](url)`, `![](url)`,
   `` `code` ``, `|---|`. (S001, S003)
+- `+text+` is decisive Textile at 3 points; see
+  [insertion scoring](./detector-textile-insertion.md). (S005)
 - New structural evidence: dash and numbered lists, Setext headings, and tables
   with or without a separator row, counted once per block. Weights and rationale:
   [score once per block](./detector-score-once-per-block.md). (S003)
@@ -70,6 +72,7 @@ new bare pattern. (S004)
 
 [Overview](./auto-format-detection-overview.md) ·
 [Line patterns](./detector-line-patterns.md) ·
+[Insertion scoring](./detector-textile-insertion.md) ·
 [Accepted behaviour changes](./detector-revision-accepted-changes.md) ·
 [Directive](./directive-html-comment-form.md) ·
 [AutoSwitch](./auto-switch-module.md) ·

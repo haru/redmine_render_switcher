@@ -1,8 +1,8 @@
 ---
 title: Detector line patterns and their traps
 type: component
-sources: [S003, S004]
-updated: 2026-09-20
+sources: [S003, S004, S005]
+updated: 2026-10-31
 ---
 
 # Detector line patterns and their traps
@@ -45,6 +45,13 @@ constants in `detector.rb`, each measured against Redmine 7.0.1. (S003)
 > including `#+`. The current code (`detector.rb`) and CLAUDE.md omit `#+`: a `#`
 > line may be a Markdown heading, which takes no continuation, so an indented
 > block under it is code and must stay masked. Code wins. (S003)
+
+## Inline pattern with boundary conditions
+
+`TEXTILE_INSERTION` (`+text+`, 3 points) is the one table pattern that uses
+look-behind and look-ahead to check the characters around the notation, instead of
+a column-0 anchor. Its rules and trade-offs are on
+[Textile insertion scoring](./detector-textile-insertion.md). (S005)
 
 ## Deliberately not scored
 

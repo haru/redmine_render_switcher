@@ -1,8 +1,8 @@
 ---
 title: Constitution gates and ADR obligations
 type: concept
-sources: [S001, S002, S004]
-updated: 2026-09-20
+sources: [S001, S002, S004, S005, S006]
+updated: 2026-10-31
 ---
 
 # Constitution gates and ADR obligations
@@ -39,6 +39,17 @@ without a coupling-point ADR. FR-002 still requires **ADR-0005** for the scoring
 policy; block scoring and the two-line list floor go in its Consequences, and
 whether they deserve an ADR of their own is put to the user, not decided
 unilaterally. No `rescue` is added (Principle III). (S004)
+
+## Textile insertion scoring (bugfix 003)
+
+One constant and one table row, so there is no new `prepend` and Principle I
+passes without a coupling-point ADR. Principle IV asks for ambiguity to be solved
+by context rules rather than patterns; `+` is decided by the characters around one
+notation and never across lines, so a bounded pattern like `TEXTILE_INLINE_CODE`
+suffices and no scan is added. No `rescue` or encoding guard is added (Principle
+III), and the inline-code masking is rejected under Principle VI. The decision is
+recorded in **ADR-0006** (created with the change); `Detector::VERSION` goes to 6.
+See [insertion scoring](./detector-textile-insertion.md). (S005, S006)
 
 ## Work the gates commit to
 
