@@ -15,6 +15,9 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
 
   TEXTILE_BODY = %(h2. Heading\n\n"link":https://ex.com/\n)
 
+  LABELS = "+*Label one:*+\r\n\r\nplain text\r\n\r\n+*Label two:*+ \r\n\r\n" \
+           "+*Label three:*+\r\n\r\n+*Label four:*+\r\n"
+
   def setup
     super
     @original_format = Setting.text_formatting
@@ -184,6 +187,29 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
     end
   end
 
+  # ADR-0006: +text+ is Textile's underline.
+  context "with Textile insertion notation" do
+    should "render underlined labels under either setting" do
+      %w[textile common_mark].each do |format|
+        html = render_with_site_format(format, LABELS)
+
+        assert_equal 4, html.scan("<ins><strong>").size, format
+        assert_not_includes html, "+", format
+      end
+    end
+
+    should "leave a lone single-character form to the site setting" do
+      assert_includes render_with_site_format("common_mark", "+a+"), "+a+"
+      assert_includes render_with_site_format("textile", "+a+"), "<ins>"
+    end
+
+    should "let a markdown directive beat the insertion score" do
+      html = render_with_site_format("textile", "<!-- render_switcher: markdown -->\n\n+ab+\n")
+
+      assert_not_includes html, "<ins>"
+    end
+  end
+
   # FR-021: notation that only Markdown reads as structure has to render as
   # structure whichever format the site is set to.
   context "with a Markdown list or heading" do
@@ -273,7 +299,13 @@ class RenderSwitcherWriteSideTest < Redmine::IntegrationTest
     get "/issues/1/edit"
 
     assert_response :success
-    assert_select "script[src*=?]", "jstoolbar/common_mark"
+    if defined?(Redmine::WikiToolbar)
+      # Redmine master replaced the jstoolbar scripts with a Stimulus-driven toolbar
+      # that receives the formatter name as a data attribute.
+      assert_select "[data-controller~=wiki-toolbar][data-wiki-toolbar-format-value=?]", "common_mark"
+    else
+      assert_select "script[src*=?]", "jstoolbar/common_mark"
+    end
   end
 
   # Redmine 6.1 added list-autofill to the wiki textareas and 7.0 added table-paste;

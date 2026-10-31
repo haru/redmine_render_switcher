@@ -2,15 +2,46 @@
 
 require File.expand_path("../test_helper", __dir__)
 
+# Fixtures, site setup and page creation shared by the section-edit tests: the plugin
+# is on, the threshold is 2 and the page is created through the real controller.
+module SectionEditSetup
+  def self.included(base)
+    base.fixtures :projects, :users, :email_addresses, :roles, :members, :member_roles,
+                  :enabled_modules, :wikis, :wiki_pages, :wiki_contents, :wiki_content_versions,
+                  :trackers, :issue_statuses, :enumerations, :issues
+  end
+
+  # Sets the site format, turns the plugin on and saves +body+ as a wiki page.
+  #
+  # @param site_format [String] the Redmine +text_formatting+ value.
+  # @param body [String] the page text.
+  def create_page(site_format, body)
+    @original_format = Setting.text_formatting
+    @original_settings = Setting.plugin_redmine_render_switcher
+    Setting.text_formatting = site_format
+    Setting.plugin_redmine_render_switcher =
+      { "auto_detect_enabled" => "1", "score_threshold" => "2" }
+    log_user("admin", "admin")
+    put("/projects/ecookbook/wiki/#{self.class::PAGE_TITLE}",
+        params: { content: { text: body, comments: "created by test" } })
+    @page = WikiPage.find_by(title: self.class::PAGE_TITLE)
+  end
+
+  def teardown
+    @page&.destroy
+    Setting.text_formatting = @original_format
+    Setting.plugin_redmine_render_switcher = @original_settings
+    super
+  end
+end
+
 # R-03 / US2 scenario 3: section-edit links are numbered by counting the <hN>
 # elements of the rendered HTML (ApplicationHelper#parse_sections), while
 # get_section / update_section number them from the source with the formatter's
 # extract_sections. When the plugin delegates, both have to agree, and a section
 # save must not disturb a single byte outside the edited section.
 class RenderSwitcherSectionEditTest < Redmine::IntegrationTest
-  fixtures :projects, :users, :email_addresses, :roles, :members, :member_roles,
-           :enabled_modules, :wikis, :wiki_pages, :wiki_contents, :wiki_content_versions,
-           :trackers, :issue_statuses, :enumerations, :issues
+  include SectionEditSetup
 
   PAGE_TITLE = "RenderSwitcherSections"
 
@@ -30,23 +61,8 @@ class RenderSwitcherSectionEditTest < Redmine::IntegrationTest
 
   def setup
     super
-    @original_format = Setting.text_formatting
-    @original_settings = Setting.plugin_redmine_render_switcher
     # The site says Textile; the page is written in Markdown.
-    Setting.text_formatting = "textile"
-    Setting.plugin_redmine_render_switcher =
-      { "auto_detect_enabled" => "1", "score_threshold" => "2" }
-    log_user("admin", "admin")
-    put("/projects/ecookbook/wiki/#{PAGE_TITLE}",
-        params: { content: { text: MARKDOWN_BODY, comments: "created by test" } })
-    @page = WikiPage.find_by(title: PAGE_TITLE)
-  end
-
-  def teardown
-    @page&.destroy
-    Setting.text_formatting = @original_format
-    Setting.plugin_redmine_render_switcher = @original_settings
-    super
+    create_page("textile", MARKDOWN_BODY)
   end
 
   test "section edit links are numbered the same way extract_sections numbers them" do
@@ -83,6 +99,77 @@ class RenderSwitcherSectionEditTest < Redmine::IntegrationTest
     assert_equal formatter.new(before).update_section(2, "## B\n\ntext b edited"), after
     assert_includes after, "## A\n\ntext a"
     assert_includes after, "## C\n\ntext c"
+  end
+end
+
+# ADR-0006 / FR-011: a Textile page that uses +text+ notation on a Markdown site is
+# detected as Textile, and a section save leaves every byte outside the edited
+# section alone. The headings are Textile evidence themselves, so this proves the
+# round trip, not the detection; the detection is pinned by the unit tests.
+class RenderSwitcherInsertionSectionEditTest < Redmine::IntegrationTest
+  include SectionEditSetup
+
+  PAGE_TITLE = "RenderSwitcherInsertionSections"
+
+  INSERTION_BODY = "h2. A\n\n+*Label one:*+\n\nh2. B\n\n+*Label two:*+\n\nh2. C\n\n+*Label three:*+\n"
+
+  def setup
+    super
+    create_page("common_mark", INSERTION_BODY)
+  end
+
+  test "saving one section leaves every other byte of the page alone" do
+    get "/projects/ecookbook/wiki/#{PAGE_TITLE}"
+
+    assert_response :success
+    assert_equal 3, response.body.scan("<ins><strong>").size
+
+    formatter = Redmine::WikiFormatting.formatter_for("common_mark")
+    before = @page.content.text
+    _section, hash = formatter.new(before).get_section(2)
+
+    put("/projects/ecookbook/wiki/#{PAGE_TITLE}",
+        params: {
+          content: { text: "h2. B\n\n+*Label two edited:*+", version: @page.content.version },
+          section: 2,
+          section_hash: hash
+        })
+
+    assert_response :redirect
+    after = @page.reload.content.text
+
+    assert_equal formatter.new(before).update_section(2, "h2. B\n\n+*Label two edited:*+"), after
+    assert_includes after, "h2. A\n\n+*Label one:*+\n\n"
+    assert_includes after, "\n\nh2. C\n\n+*Label three:*+"
+  end
+end
+
+# ADR-0006, Consequences: the underline is the only Textile evidence here and it
+# outweighs the document's own Setext headings, so the whole page is read as Textile.
+# The page then has no sections at all, and the rendered HTML and the source
+# numbering still agree about that.
+class RenderSwitcherInsertionOverridesSetextTest < Redmine::IntegrationTest
+  include SectionEditSetup
+
+  PAGE_TITLE = "RenderSwitcherInsertionSetext"
+
+  BODY = "A\n---\n\n+ab+\n\nB\n---\n\ntext b\n"
+
+  def setup
+    super
+    create_page("common_mark", BODY)
+  end
+
+  test "an underline turns a Setext page into a Textile page without sections" do
+    get "/projects/ecookbook/wiki/#{PAGE_TITLE}"
+
+    assert_response :success
+    assert_includes response.body, "<ins>ab</ins>"
+    assert_select "a[href=?]", "/projects/ecookbook/wiki/#{PAGE_TITLE}/edit?section=2", 0
+
+    formatter = Redmine::WikiFormatting.formatter_for("common_mark")
+
+    assert_equal "", formatter.new(@page.content.text).get_section(2).first
   end
 end
 

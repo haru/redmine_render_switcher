@@ -1,8 +1,8 @@
 ---
 title: Detector version in the formatted-text cache key
 type: decision
-sources: [S001, S002, S003, S004]
-updated: 2026-09-20
+sources: [S001, S002, S003, S004, S005]
+updated: 2026-10-31
 ---
 
 # Detector version in the formatted-text cache key
@@ -45,7 +45,7 @@ core's and the site behaves exactly as without the plugin (SC-005). See
 [detector rule revision](./detector-scan-structure.md), because that change moves
 the pattern tables, the masking and the context rules (FR-015, SC-012). Bump it
 whenever any of those move; the old HTML then stops being reused by itself.
-With the default threshold the key ends in `-rs4t2`. (S003, S004)
+With the default threshold the key ends in `-rs4t2`. It later moved to 5, and to 6 with Textile `+text+` insertion scoring ([ADR-0006](../../docs/adr/0006-score-textile-insertion-notation.md)); the key now ends in `-rs6t2`. (S003, S004, S005)
 
 ## Rejected alternatives
 
