@@ -15,6 +15,9 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
 
   TEXTILE_BODY = %(h2. Heading\n\n"link":https://ex.com/\n)
 
+  LABELS = "+*Label one:*+\r\n\r\nplain text\r\n\r\n+*Label two:*+ \r\n\r\n" \
+           "+*Label three:*+\r\n\r\n+*Label four:*+\r\n"
+
   def setup
     super
     @original_format = Setting.text_formatting
@@ -181,6 +184,35 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
         assert_includes html, "<pre", format
         assert_not_includes html, "<a href=\"https://ex.com/\"", format
       end
+    end
+  end
+
+  # ADR-0006: +text+ is Textile's underline. Escapes keep the source ASCII.
+  context "with Textile insertion notation" do
+    should "render underlined labels under either setting" do
+      %w[textile common_mark].each do |format|
+        html = render_with_site_format(format, LABELS)
+
+        assert_equal 4, html.scan("<ins><strong>").size, format
+        assert_not_includes html, "+", format
+      end
+    end
+
+    should "leave a lone single-character form to the site setting" do
+      assert_includes render_with_site_format("common_mark", "+a+"), "+a+"
+      assert_includes render_with_site_format("textile", "+a+"), "<ins>"
+    end
+
+    should "not underline plus signs in ordinary Markdown text" do
+      html = render_with_site_format("common_mark", "C++ and a+b+c\n\nThe C++ build.\n")
+
+      assert_not_includes html, "<ins>"
+    end
+
+    should "let a markdown directive beat the insertion score" do
+      html = render_with_site_format("textile", "<!-- render_switcher: markdown -->\n\n+ab+\n")
+
+      assert_not_includes html, "<ins>"
     end
   end
 

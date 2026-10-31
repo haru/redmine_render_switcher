@@ -574,6 +574,138 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     end
   end
 
+  # ADR-0006: +text+ is Textile's insertion notation. The fixtures below are written
+  # with \u escapes where they hold non-ASCII text (CJK prose and punctuation,
+  # which is what the boundary rules have to cope with), so the source stays ASCII.
+  # Each list is checked against what RedCloth really renders, so the pattern can
+  # only count what Textile turns into an insertion.
+  INSERTION_COUNTED = [
+    "+下線+", "これは +下線+ です", "(+ins+)", "+*bold*+", "*+ins+*",
+    "+ins+.", "+ins+,", "+ins+;", "+ins+:", "+ins+!", "+ins+?", "+ins+。", "+ins+、",
+    "+ins+）", "| +ins+ | x |", "|+ins+|x|", "* +ins+ item", "# +ins+ item", "h2. +ins+",
+    "+ab+ c +de+", "Ctrl +Alt+ Del", "x\t+ins+\ty"
+  ].freeze
+
+  INSERTION_NOT_NOTATION = [
+    "これは+下線+です", "これは+下線+ です",
+    "これは +下線+です", "（+ins+）", "「+ins+」", "[+ins+]",
+    "\"+ins+\"", "=+ins+", ":+ins+", "/+ins+/", "--format=+%h+", "https://ex.com/?q=+a+", "`+ins+`",
+    "<code>+ins+</code>", "[+ins+](https://ex.com/)", "C++/C++", "C++ and C++", "i++ + ++j", "a+b+c",
+    "Ctrl+Alt+Del", "+1 and +2", "+1, +2, +3", "+ item +", "+ item", "+++ b/file.rb",
+    "　+下線+　"
+  ].freeze
+
+  INSERTION_MISSED = [
+    "+a+", "+1+", "+字+", "x = +a+ b", "_+ins+_", "++x++", "+++x+++", "+ins+/x", "+ins+-x",
+    "+ins+'s", "+foo\nbar+", "+ab+cd+", "+ab + cd+"
+  ].freeze
+
+  INSERTION_LABELS = "+*Label one:*+ \r\n\r\nplain text\r\n\r\n+*Label two:*+\r\n\r\n" \
+                     "+*Label three:*+ \r\n\r\n+*Label four:*+\r\n"
+
+  # Renders +text+ with the bare Textile formatter, skipping the plugin.
+  def textile_html(text)
+    klass = Redmine::WikiFormatting::Textile::Formatter
+    klass.instance_method(:to_html).super_method.bind_call(klass.new(text))
+  end
+
+  def insertion_scores(text)
+    result = RedmineRenderSwitcher::Detector.detect(text, threshold: DEFAULT_THRESHOLD)
+    [ result.textile_score, result.markdown_score ]
+  end
+
+  context "RedmineRenderSwitcher::Detector::TEXTILE_INSERTION" do
+    should "match exactly where RedCloth renders an insertion, apart from the accepted misses" do
+      pattern = RedmineRenderSwitcher::Detector::TEXTILE_INSERTION
+
+      INSERTION_COUNTED.each do |text|
+        assert_includes textile_html(text), "<ins>", text
+        assert pattern.match?(text), text
+      end
+      INSERTION_NOT_NOTATION.each do |text|
+        assert_not_includes textile_html(text), "<ins>", text
+        assert_not pattern.match?(text), text
+      end
+      INSERTION_MISSED.each do |text|
+        assert_includes textile_html(text), "<ins>", text
+        assert_not pattern.match?(text), text
+      end
+    end
+
+    should "add Textile points for every counted form (C-1)" do
+      INSERTION_COUNTED.each do |text|
+        assert_operator insertion_scores(text).first, :>=, 3, text
+      end
+    end
+
+    should "add no Textile points for text Textile leaves alone (C-2)" do
+      INSERTION_NOT_NOTATION.each do |text|
+        assert_equal 0, insertion_scores(text).first, text
+      end
+    end
+
+    should "detect a document of underlined labels as Textile 12:0 (C-1-1)" do
+      result = RedmineRenderSwitcher::Detector.detect(INSERTION_LABELS, threshold: DEFAULT_THRESHOLD)
+
+      assert_equal [ 12, 0 ], [ result.textile_score, result.markdown_score ]
+      assert_equal "textile", result.format
+      assert_equal :score, result.reason
+    end
+
+    should "let a single occurrence decide the text (C-1-2, C-1-4)" do
+      [ "これは +下線+ です。\n", "Ctrl +Alt+ Del\n" ].each do |text|
+        result = RedmineRenderSwitcher::Detector.detect(text, threshold: DEFAULT_THRESHOLD)
+
+        assert_equal [ 3, 0, "textile", :score ],
+                     [ result.textile_score, result.markdown_score, result.format, result.reason ], text
+      end
+    end
+
+    should "count each occurrence (C-1-3)" do
+      assert_equal [ 6, 0 ], insertion_scores("+ab+ c +de+\n")
+    end
+
+    should "leave single-character insertions to the site setting (C-3)" do
+      [ "+a+\n", "x = +a+ b\n" ].each do |text|
+        result = RedmineRenderSwitcher::Detector.detect(text, threshold: DEFAULT_THRESHOLD)
+
+        assert_nil result.format, text
+        assert_equal :no_signal, result.reason, text
+        assert_equal [ 0, 0 ], [ result.textile_score, result.markdown_score ], text
+      end
+    end
+
+    should "weigh against other evidence the way the contract says (C-4-1..C-4-4)" do
+      dash_list = "- one\n- two\n"
+      link = "[l](https://ex.com/)\n"
+
+      assert_equal [ 3, 3 ], insertion_scores("+ab+\n\n#{dash_list}")
+      assert_equal [ 3, 4 ], insertion_scores("+ab+\n\n#{link}")
+      assert_equal [ 6, 3 ], insertion_scores("+ab+ +cd+\n\n#{dash_list}")
+      assert_equal [ 6, 4 ], insertion_scores("+ab+ +cd+\n\n#{link}")
+
+      one = RedmineRenderSwitcher::Detector.detect("+ab+\n\n#{dash_list}", threshold: DEFAULT_THRESHOLD)
+      two = RedmineRenderSwitcher::Detector.detect("+ab+ +cd+\n\n#{link}", threshold: DEFAULT_THRESHOLD)
+
+      assert_nil one.format
+      assert_equal :below_threshold, one.reason
+      assert_equal "textile", two.format
+      assert_equal :score, two.reason
+    end
+
+    should "stay Markdown for inline code and ignore code blocks (C-4-5..C-4-9)" do
+      inline = RedmineRenderSwitcher::Detector.detect("`+ins+`\n", threshold: DEFAULT_THRESHOLD)
+      fence = RedmineRenderSwitcher::Detector.detect("Intro.\n\n```\n+ins+\n```\n", threshold: DEFAULT_THRESHOLD)
+
+      assert_equal [ "common_mark", 0, 3 ], [ inline.format, inline.textile_score, inline.markdown_score ]
+      assert_equal [ "common_mark", 0, 10 ], [ fence.format, fence.textile_score, fence.markdown_score ]
+      assert_equal [ 0, 0 ], insertion_scores("Intro.\n\n<pre>\n+ins+\n</pre>\n")
+      assert_equal [ 0, 0 ], insertion_scores("Intro.\n\n    +ins+\n\nEnd.\n")
+      # Accepted (research decision 6): one spaced occurrence inside inline code ties.
+      assert_equal [ 3, 3 ], insertion_scores("`a +bc+ d`\n")
+    end
+  end
+
   context "RedmineRenderSwitcher::Detector::Result" do
     should "carry only the format, the two scores and the reason" do
       assert_equal %i[format textile_score markdown_score reason],
@@ -683,11 +815,10 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
       assert_kind_of Integer, RedmineRenderSwitcher::Detector::VERSION
     end
 
-    # The ADR-0005 rule changes and the list-continuation masking fix both move
-    # verdicts, so HTML cached before them must not be reused. This value must
-    # never be lowered.
-    should "be at least 5 so that HTML cached before the ADR-0005 rule changes and the list-continuation fix is not reused" do
-      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 5
+    # ADR-0006 (Textile insertion notation) moves verdicts too, so HTML cached
+    # before it must not be reused. This value must never be lowered.
+    should "be at least 6 so that HTML cached before the +text+ insertion rule is not reused" do
+      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 6
     end
   end
 end

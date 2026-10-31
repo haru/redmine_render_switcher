@@ -1,4 +1,8 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": "ruby -rjson -e 'd = JSON.parse($stdin.read); printf(%q(%s | Context: %.0f%% used), d.dig(%q(model), %q(display_name)), d.dig(%q(context_window), %q(used_percentage)) || 0)'"
+  },
   "enabledPlugins": {
     "ruby-lsp@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,

@@ -86,6 +86,64 @@ class RenderSwitcherSectionEditTest < Redmine::IntegrationTest
   end
 end
 
+# ADR-0006 / FR-011: a Textile page whose only evidence is +text+ notation is
+# detected as Textile on a Markdown site, and a section save leaves every byte
+# outside the edited section alone.
+class RenderSwitcherInsertionSectionEditTest < Redmine::IntegrationTest
+  fixtures :projects, :users, :email_addresses, :roles, :members, :member_roles,
+           :enabled_modules, :wikis, :wiki_pages, :wiki_contents, :wiki_content_versions,
+           :trackers, :issue_statuses, :enumerations, :issues
+
+  PAGE_TITLE = "RenderSwitcherInsertionSections"
+
+  INSERTION_BODY = "h2. A\n\n+*Label one:*+\n\nh2. B\n\n+*Label two:*+\n\nh2. C\n\n+*Label three:*+\n"
+
+  def setup
+    super
+    @original_format = Setting.text_formatting
+    @original_settings = Setting.plugin_redmine_render_switcher
+    Setting.text_formatting = "common_mark"
+    Setting.plugin_redmine_render_switcher =
+      { "auto_detect_enabled" => "1", "score_threshold" => "2" }
+    log_user("admin", "admin")
+    put("/projects/ecookbook/wiki/#{PAGE_TITLE}",
+        params: { content: { text: INSERTION_BODY, comments: "created by test" } })
+    @page = WikiPage.find_by(title: PAGE_TITLE)
+  end
+
+  def teardown
+    @page&.destroy
+    Setting.text_formatting = @original_format
+    Setting.plugin_redmine_render_switcher = @original_settings
+    super
+  end
+
+  test "saving one section leaves every other byte of the page alone" do
+    get "/projects/ecookbook/wiki/#{PAGE_TITLE}"
+
+    assert_response :success
+    assert_equal 3, response.body.scan("<ins><strong>").size
+
+    formatter = Redmine::WikiFormatting.formatter_for("common_mark")
+    before = @page.content.text
+    _section, hash = formatter.new(before).get_section(2)
+
+    put("/projects/ecookbook/wiki/#{PAGE_TITLE}",
+        params: {
+          content: { text: "h2. B\n\n+*Label two edited:*+", version: @page.content.version },
+          section: 2,
+          section_hash: hash
+        })
+
+    assert_response :redirect
+    after = @page.reload.content.text
+
+    assert_equal formatter.new(before).update_section(2, "h2. B\n\n+*Label two edited:*+"), after
+    assert_includes after, "h2. A\n\n+*Label one:*+\n\n"
+    assert_includes after, "\n\nh2. C\n\n+*Label three:*+"
+  end
+end
+
 # US3 / FR-012..FR-016: the explicit directive decides the format, never shows up
 # on screen, and survives a section save.
 class RenderSwitcherDirectiveRenderingTest < ActiveSupport::TestCase
