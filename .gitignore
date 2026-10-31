@@ -73,3 +73,4 @@ yarn-debug.log*
 Gemfile.lock
 specs/
 .specify/extensions/.cache/
+.claude/settings.local.json
