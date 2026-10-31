@@ -23,7 +23,7 @@ decision is explainable. (S001, S002)
 
 It also owns `Detector::VERSION`, which feeds the
 [cache key](./cache-key-detector-version.md); the rule revision bumped it from
-3 to 4. (S002, S003)
+3 to 4, and it later moved to 5 and then to 6 with the ADR-0006 insertion pattern. (S002, S003)
 
 ## Ambiguity is solved by context, not patterns
 

@@ -1,4 +1,4 @@
-# ADR-0006: Score Textile insertion notation (`+text+`) only where Textile renders it
+# ADR-0006: Score Textile insertion notation (`+text+`) where Textile renders it
 
 - **Status**: Accepted
 - **Date**: 2026-10-31
@@ -35,8 +35,12 @@ The conclusions are restated here; the full table is in
 1. **`+text+` scores for Textile, at 3 points per occurrence**, the weight inline code
    has in both tables. One occurrence is enough, so with no other evidence it decides
    the text. Nested notation such as `+*text*+` counts the same.
-2. **It counts only in the positions where Textile renders it as an insertion.**
-   - The opening `+` follows the start of a line, whitespace, `(`, `*` or `|`.
+2. **It counts in the positions where Textile renders it as an insertion, apart from
+   the residual cases under Consequences.**
+   - The opening `+` follows the start of a line, whitespace or `(`. It may also follow
+     a `*` that starts a line or follows whitespace (strong text), or a `|` that starts
+     a line (a table cell). `x*+ab+*y` and `x |+ab+| y` render no insertion and do not
+     count.
    - The closing `+` precedes the end of a line, whitespace, or one of `.` `,` `;` `:`
      `!` `?` `)` `*` `|` `。` `、` `）`.
    - The content does not begin or end with whitespace and stays on one line.
@@ -66,8 +70,8 @@ formatted-HTML cache must not serve HTML rendered before it
 - **Score once per document or block, following decision 3 of ADR-0005.** Rejected:
   inline notation has no block to count, and both inline code patterns already score
   per occurrence. The notation follows them, so its evidence grows with its count.
-- **Use a lower weight.** Rejected: at the default threshold, one occurrence would no
-  longer decide a document.
+- **Use a lower weight.** Rejected: a weight of 1 would no longer decide a document at
+  the default threshold of 2, and 3 matches the weight of inline code.
 
 ## Consequences
 
@@ -82,17 +86,33 @@ formatted-HTML cache must not serve HTML rendered before it
   `+ins+'s` and a `+text+` spanning two lines render as insertions but score nothing.
   They follow the site setting unless other evidence decides.
 - **Content holding a plus sign is missed too**, as in `+ab+cd+` and `+ab + cd+`, which
-  Textile renders as insertions. Allowing a plus sign in the content would make `++x++`
-  match.
+  Textile renders as insertions, and so are plus signs at the edge of the content
+  (`+C++ and Java`, `++ab+ x`, `x +ab++ y`). Allowing a plus sign in the content would
+  make `++x++` match.
+- **Table cells after the first are missed.** `|a|+ins+|` renders an insertion, but only
+  a pipe at the start of a line counts as an opener.
 - **Inline code is not masked, so spaced notation inside it counts.** One occurrence in
   Markdown inline code, as in `` `a +bc+ d` ``, scores 3:3 and stays undecided. Two in
   the same span, as in `` `a +bc+ d +ef+ g` ``, score 6:3 and switch a Markdown text to
   Textile. Masking inline code would add a removal rule beyond code blocks for a rare
   shape; the directive corrects an affected text.
-- **Some text Textile leaves alone still counts.** `<code> +ins+ </code>` and
-  `<notextile> +ins+ </notextile>` render no insertion but score 3:0, so with no other
-  evidence they read as Textile.
+- **Some text Textile leaves alone still counts.** `<code> +ins+ </code>`,
+  `<notextile> +ins+ </notextile>`, an HTML comment such as `<!-- +abc+ -->` and a
+  lone leading pipe as in `|+ins+` render no insertion but score 3:0, so with no other
+  evidence they read as Textile. Whether a `|` opens a table cell depends on the whole
+  line, which a lookbehind cannot see.
+- **Unfenced diffs can switch.** Textile renders `+foo bar+` as an insertion, so a
+  unified diff pasted without a fence, with an added line such as `+y = a+`, scores 3:0
+  and reads as Textile. A diff inside a fence or an indented block is masked and
+  unaffected.
+- **An underline can outweigh Setext headings.** The `-` underline is unscored, so a
+  Markdown page headed `A` / `---` that also holds `+ab+` scores 3:0, reads as Textile
+  and has no sections, where without the underline it keeps two. The rendered headings
+  and the source numbering agree about that, so a section save stays safe; the
+  directive corrects an affected page. Pinned in
+  `test/integration/render_switcher_section_edit_test.rb`.
 - **Text attached to CJK characters scores nothing**, as in `これは+下線+です`, because
-  Textile does not render it as an insertion either.
+  Textile does not render it as an insertion either. The same goes for a full-width
+  space on either side (`x +ab+　y`).
 - **Re-verify when Redmine updates its formatters:** that Textile still renders `+text+`
   as an insertion at these boundaries, and that CommonMark still leaves it as plain text.

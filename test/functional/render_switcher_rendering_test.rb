@@ -187,7 +187,7 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
     end
   end
 
-  # ADR-0006: +text+ is Textile's underline. Escapes keep the source ASCII.
+  # ADR-0006: +text+ is Textile's underline.
   context "with Textile insertion notation" do
     should "render underlined labels under either setting" do
       %w[textile common_mark].each do |format|
@@ -201,12 +201,6 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
     should "leave a lone single-character form to the site setting" do
       assert_includes render_with_site_format("common_mark", "+a+"), "+a+"
       assert_includes render_with_site_format("textile", "+a+"), "<ins>"
-    end
-
-    should "not underline plus signs in ordinary Markdown text" do
-      html = render_with_site_format("common_mark", "C++ and a+b+c\n\nThe C++ build.\n")
-
-      assert_not_includes html, "<ins>"
     end
 
     should "let a markdown directive beat the insertion score" do

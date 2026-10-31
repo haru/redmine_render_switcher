@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `redmine_render_switcher` auto-detects whether a Redmine text (issue description, journal, wiki page, news …) is written in **Textile** or **Markdown** and renders it with the matching formatter, so a long-time Textile site can let users write new content in Markdown without converting anything. Only rendering changes; stored text is never modified and the plugin adds no tables or migrations.
 
-**Current state: released as v0.1.0; the detector rules are being revised on `bugfix/002-fix-detector-rules` (ADR-0005).** The full suite passes (164 runs), RuboCop is clean, YARD is at 100% and C0 coverage of `lib/` is 100%. New work is changes to a working plugin, not a greenfield build.
+**Current state: released as v0.1.1; Textile `+text+` insertion scoring is being added on `bugfix/003-detect-textile-insertion` (ADR-0006), after the detector rule revision of ADR-0005.** The full suite passes (179 runs), RuboCop is clean, YARD is at 100% and C0 coverage of `lib/` is 100%. New work is changes to a working plugin, not a greenfield build.
 
 ## Architecture
 
@@ -33,7 +33,7 @@ Decision order inside `AutoSwitch`: setting off → re-entrancy flag set → not
 
 ## Project documents — what to read
 
-- **`docs/adr/`** — the design record (ADR-0001 patch formatters instead of registering a format; ADR-0002 detector version in the cache key, superseded by ADR-0004 which adds the score threshold; ADR-0003 forward the formatter constructor's arguments untouched). Append-only; index in `docs/adr/README.md`. Read before changing either coupling point.
+- **`docs/adr/`** — the design record (ADR-0001 patch formatters instead of registering a format; ADR-0002 detector version in the cache key, superseded by ADR-0004 which adds the score threshold; ADR-0003 forward the formatter constructor's arguments untouched; ADR-0005 score only notation that renders differently, one score per block; ADR-0006 score Textile `+text+` insertion only where Textile renders it). Append-only; index in `docs/adr/README.md`. Read before changing either coupling point.
 - **`.specify/memory/constitution.md`** (v1.1.0) — six principles; it **governs where it disagrees with this file**. The three non-negotiable ones: minimal core surface (any new `prepend`/patched core class needs an ADR), test-first, errors surface immediately.
 - **`docs/directive-usage.md`** — user-facing directive documentation.
 - **`specs/001-auto-format-detection/`** — spec-kit `spec.md`, `plan.md`, `tasks.md`, `data-model.md`. Gitignored, and written in **Japanese** (`specs/CLAUDE.md`). `.specify/feature.json` points at the active feature.
