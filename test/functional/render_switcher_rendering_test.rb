@@ -299,7 +299,13 @@ class RenderSwitcherWriteSideTest < Redmine::IntegrationTest
     get "/issues/1/edit"
 
     assert_response :success
-    assert_select "script[src*=?]", "jstoolbar/common_mark"
+    if defined?(Redmine::WikiToolbar)
+      # Redmine master replaced the jstoolbar scripts with a Stimulus-driven toolbar
+      # that receives the formatter name as a data attribute.
+      assert_select "[data-controller~=wiki-toolbar][data-wiki-toolbar-format-value=?]", "common_mark"
+    else
+      assert_select "script[src*=?]", "jstoolbar/common_mark"
+    end
   end
 
   # Redmine 6.1 added list-autofill to the wiki textareas and 7.0 added table-paste;
