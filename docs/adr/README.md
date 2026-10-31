@@ -53,3 +53,4 @@ surrounding software changes.
 | [0003](./0003-forward-constructor-arguments-untouched.md) | Forward the formatter constructor's arguments untouched | Accepted | 2026-09-19 |
 | [0004](./0004-add-score-threshold-to-formatted-text-cache-key.md) | Add the score threshold to the formatted-text cache key | Accepted | 2026-09-19 |
 | [0005](./0005-score-only-notation-that-renders-differently.md) | Score only notation that renders differently, one score per block, precision before recall | Accepted | 2026-09-19 |
+| [0006](./0006-score-textile-insertion-notation.md) | Score Textile insertion notation (`+text+`) only where Textile renders it | Accepted | 2026-10-31 |

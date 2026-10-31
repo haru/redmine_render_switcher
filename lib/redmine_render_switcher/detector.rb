@@ -30,7 +30,7 @@ module RedmineRenderSwitcher
     # The configured threshold is *not* covered here, because it is a setting
     # rather than a change to this code; {CacheKey} puts its current value in the
     # key separately.
-    VERSION = 5
+    VERSION = 6
 
     # Redmine's name for the Textile format.
     TEXTILE = "textile"
@@ -101,6 +101,24 @@ module RedmineRenderSwitcher
     # RedCloth renders neither of those as code, and the detector now agrees.
     TEXTILE_INLINE_CODE = /(?<!\w)@[^@\s](?:[^@\n]*[^@\s])?@(?!\w)/
 
+    # Textile insertion (underline) notation, <tt>+like this+</tt>.
+    #
+    # Textile turns it into an <tt>ins</tt> element and CommonMark leaves the plus
+    # signs as text (ADR-0006). The plus sign is common in ordinary text, so the
+    # pattern counts only the positions where Textile renders an insertion, apart from
+    # the residual cases ADR-0006 lists.
+    #
+    # The opening plus follows the start of a line, whitespace or <tt>(</tt>. It may
+    # also follow a <tt>*</tt> that itself starts a line or follows whitespace (strong
+    # text) and a <tt>|</tt> that starts a line (a table cell). The closing plus
+    # precedes the end of a line, whitespace or one of the closing marks
+    # <tt>.,;:!?)*|</tt> and the full-width full stop, comma and parenthesis (written
+    # as escapes to keep this file ASCII). The content is at least two characters,
+    # does not begin or end with whitespace, stays on one line and holds no plus sign,
+    # which is what keeps <tt>+++x+++</tt> and <tt>C+++</tt> out.
+    TEXTILE_INSERTION =
+      /(?<=^|[\s(]|^[*|]|\s\*)\+[^\s+][^+\n]*[^\s+]\+(?=$|[\s.,;:!?)*|\u3002\u3001\uFF09])/
+
     # Notation that only Textile gives meaning to, with its weight.
     #
     # A notation earns a place here only when one format renders it as markup and
@@ -115,9 +133,10 @@ module RedmineRenderSwitcher
     # * +_text_+, +> quote+, +* item+ and +---+, which both formats render alike.
     # * +ABBR(text)+, which matches ordinary prose such as +GET(path)+, and +p. +,
     #   which matches +p. s.+.
-    # * Deletion, insertion, span and citation inline markup, footnote markers
-    #   (+fn1. +) and Markdown strikethrough (+~~text~~+): too rare to be worth a
-    #   pattern, for either format.
+    # * Deletion, span and citation inline markup, footnote markers (+fn1. +) and
+    #   Markdown strikethrough (+~~text~~+): too rare to be worth a pattern, for
+    #   either format. Insertion (<tt>+text+</tt>) used to be on this list and is scored by
+    #   {TEXTILE_INSERTION} since ADR-0006.
     # * Markdown reference links and autolinks.
     # * The +-+ Setext underline, because +---+ is also the horizontal rule that both
     #   formats render alike, and a line of dashes alone does not say which it is.
@@ -129,6 +148,7 @@ module RedmineRenderSwitcher
       %r{!\S*[./]\S*!} => 3,
       /^bq\.\s/ => 4,
       TEXTILE_INLINE_CODE => 3,
+      TEXTILE_INSERTION => 3,
       /^\|_\./ => 5
     }.freeze
 

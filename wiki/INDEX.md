@@ -7,12 +7,13 @@ page files, not here.
 ## concept
 - [Auto format detection — overview](./pages/auto-format-detection-overview.md) — what the plugin does, chosen approach, scope, layout; start here
 - [Section-edit numbering must agree with the rendered format](./pages/section-numbering-consistency.md) — why detection and delegate are memoized per instance
-- [Constitution gates and ADR obligations](./pages/constitution-gates-and-adr-obligations.md) — six principles as applied; ADR-0001/0002 owed, ADR-0005 for the detector revision
+- [Constitution gates and ADR obligations](./pages/constitution-gates-and-adr-obligations.md) — six principles as applied; ADR-0001/0002 owed, ADR-0005 for the detector revision, ADR-0006 for insertion scoring
 
 ## decision
 - [Why patch the formatters instead of registering a format](./pages/why-patch-formatters-not-register-format.md) — Approach B chosen, Approach A rejected
 - [Detector version in the formatted-text cache key](./pages/cache-key-detector-version.md) — `CacheKey` on the WikiFormatting singleton; ADR-0002, ADR-0004
 - [Explicit directive — HTML comment form only](./pages/directive-html-comment-form.md) — no stripping; blank line needed after it in Textile
+- [Textile insertion notation (`+text+`) scoring](./pages/detector-textile-insertion.md) — 3 points, boundary rules, accepted misses; ADR-0006, VERSION 6
 - [Score new detector evidence once per block](./pages/detector-score-once-per-block.md) — weights, why per block, two-line list floor; ADR-0005
 - [Detector scan structure — four scans plus one masking machine](./pages/detector-scan-structure.md) — separate context scans, single-pass masking, cost 3.39%
 
