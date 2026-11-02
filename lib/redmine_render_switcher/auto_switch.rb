@@ -142,11 +142,15 @@ module RedmineRenderSwitcher
     # @return [Object, nil] the delegate formatter, or nil when this formatter
     #   should render the text itself.
     def build_render_switcher_delegate
-      return nil unless PluginSettings.auto_detect_enabled?
       return nil if Thread.current[REENTRANCY_KEY]
 
       own_format = FORMAT_BY_FORMATTER[self.class.name]
       return nil unless own_format
+
+      directive = Directive.parse(@render_switcher_text)
+
+      # An explicit directive takes precedence over auto-detection settings
+      return nil unless directive || PluginSettings.auto_detect_enabled?
 
       format = render_switcher_detection.format
       return nil if format.nil? || format == own_format
