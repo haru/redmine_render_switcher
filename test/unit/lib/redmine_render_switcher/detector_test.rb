@@ -529,6 +529,7 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
                                                    threshold: DEFAULT_THRESHOLD)
 
       assert_equal link.markdown_score, image.markdown_score
+      assert_equal 0, image.textile_score
     end
 
     should "honour a threshold that no score difference can reach" do
@@ -606,6 +607,111 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
   INSERTION_LABELS = "+*Label one:*+ \r\n\r\nplain text\r\n\r\n+*Label two:*+\r\n\r\n" \
                      "+*Label three:*+ \r\n\r\n+*Label four:*+\r\n"
 
+  # Lines whose Textile image verdict is pinned against RedCloth itself, so that
+  # tightening or loosening the pattern cannot drift away from what Textile
+  # actually renders (ADR-0007). The four lists below hold what the pattern
+  # counts and Textile renders, what neither does, the misses and the residual
+  # false positives the ADR accepts.
+
+  # Textile renders an image and the pattern counts it (C-1). Attribute blocks
+  # (alignment, class, style, language) and alternative text may hold spaces.
+  IMAGE_COUNTED = [
+    "!{width: 794px}.clipboard-202512151503-abcde.png!",
+    "!{width: 794px}image.png!",
+    "!{width: 50%; height: 20px}.a.png!",
+    "!{width: 794px}https://ex.com/a.png!",
+    "!{width: 794px}.a.png!:https://ex.com/",
+    "text !{width: 794px}.a.png! text",
+    "!image.png!",
+    "!{width:794px}.a.png!",
+    "!>{width: 794px}.a.png!",
+    "!<{width: 794px}.a.png!",
+    "!={width: 794px}.a.png!",
+    "!(cls){width: 794px}.a.png!",
+    "!(my cls){width: 1px}.a.png!",
+    "!{width: 1px}(cls)a.png!",
+    "![ja]a.png!",
+    "!>(cls){width: 1px}[ja]a.png(alt t)!",
+    "![ja]{width: 1px}a.png!",
+    "![ja-jp]{width: 1px}a.png!",
+    "!{ width: 1px}a.png!",
+    "!a.png(alt (x))!",
+    "!a.png(a (b) c)!",
+    "!a.png((x))!",
+    "!/a!",
+    "!a/b!",
+    "!(cls)a/b!",
+    "\t!a.png!",
+    "!a.png(alt text)!",
+    "!{width: 794px}.a.png(alt text)!",
+    "!https://ex.com/a.png(the alt)!",
+    "!a.png (alt)!",
+    "!a.png(alt text)!:https://ex.com/",
+    "x !a.png!",
+    "x>!a.png!",
+    "|!a.png!|"
+  ].freeze
+
+  # Textile renders no image and the pattern must not count it (C-2). The
+  # non-ASCII lines are deliberate: prose glued to the notation (CJK text without
+  # spaces, full-width brackets) is itself part of what is verified.
+  IMAGE_NOT_NOTATION = [
+    "!<>{width: 794px}.a.png!",
+    "完了しました! 次も頑張ります!",
+    "Wow!{a b} c.d!",
+    "Hi!(see x.y) ok!",
+    "Error!(code) x.rb!",
+    "!{width: 794px}!",
+    "!(x y)!",
+    "! a.png!",
+    "!a b.png!",
+    "!{width: 794px}.a\nb.png!",
+    "x!a.png!",
+    "これは!a.png!",
+    "x.!a.png!",
+    "x:!a.png!",
+    "(!a.png!)",
+    "「!a.png!」",
+    "\"!a.png!\"",
+    "*!a.png!*",
+    "すごい!(笑)次はa.png!",
+    "Yes!(a b)c.d!",
+    "!{width: 1px}. a.png!",
+    "!a(b).png!",
+    "!https://ex.com/a_(b).png!",
+    "!a.png  (alt)!",
+    "!a.png\t(alt)!",
+    "!()a.png!",
+    "Hello!",
+    "see https://ex.com/a!b.png! x",
+    "http://ex.com/!a.png!"
+  ].freeze
+
+  # Textile renders an image but the pattern does not count it (C-3, ADR-0007):
+  # a file name without a dot or a slash (a deliberate precision-first choice,
+  # since Textile reads +!wow!+ as an image too), another notation wrapped around
+  # the image, and an attribute block or alternative text spanning two lines.
+  IMAGE_MISSED = [
+    "!wow!",
+    "!img_1!",
+    "==!a.png!==",
+    "!a.png(alt\ntext)!",
+    "!(a\nb)c.png!",
+    "!{width:\n1px}a.png!"
+  ].freeze
+
+  # Counted although Textile renders no image (C-4, ADR-0007): repeated or
+  # out-of-order attributes, and a +|+ or +>+ that is not a table cell. Pinned so
+  # that a change to the pattern cannot widen or close these gaps unnoticed.
+  IMAGE_RESIDUAL = [
+    "!(a)(b)c.png!",
+    "!{a: b}{c: d}e.png!",
+    "!(c)[ja]{w: 1px}a.png!",
+    "x|!a.png!",
+    "a |!a.png! b",
+    "<p>!a.png!</p>"
+  ].freeze
+
   # Renders +text+ with the bare Textile formatter, skipping the plugin.
   def textile_html(text)
     klass = Redmine::WikiFormatting::Textile::Formatter
@@ -618,31 +724,37 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     klass.instance_method(:to_html).super_method.bind_call(klass.new(text))
   end
 
-  def insertion_scores(text)
+  # Asserts a pattern against RedCloth's own output for four lists of inputs:
+  # +counted+ (renders +tag+, pattern matches), +not_notation+ (neither),
+  # +missed+ (renders, pattern does not match) and +residual+ (pattern matches,
+  # does not render).
+  def assert_matches_redcloth(pattern, tag, counted:, not_notation:, missed:, residual:)
+    { counted => [ true, true ], not_notation => [ false, false ],
+      missed => [ true, false ], residual => [ false, true ] }.each do |texts, (renders, matches)|
+      texts.each do |text|
+        assert_equal renders, textile_html(text).include?(tag), text
+        assert_equal matches, pattern.match?(text), text
+      end
+    end
+  end
+
+  # Returns the [Textile, Markdown] scores the detector gives +text+.
+  def scores(text)
     result = RedmineRenderSwitcher::Detector.detect(text, threshold: DEFAULT_THRESHOLD)
     [ result.textile_score, result.markdown_score ]
   end
 
+  # Returns [Textile score, Markdown score, format, reason] for +text+.
+  def verdict(text)
+    result = RedmineRenderSwitcher::Detector.detect(text, threshold: DEFAULT_THRESHOLD)
+    [ result.textile_score, result.markdown_score, result.format, result.reason ]
+  end
+
   context "RedmineRenderSwitcher::Detector::TEXTILE_INSERTION" do
     should "match exactly where RedCloth renders an insertion, apart from the accepted misses" do
-      pattern = RedmineRenderSwitcher::Detector::TEXTILE_INSERTION
-
-      INSERTION_COUNTED.each do |text|
-        assert_includes textile_html(text), "<ins>", text
-        assert pattern.match?(text), text
-      end
-      INSERTION_NOT_NOTATION.each do |text|
-        assert_not_includes textile_html(text), "<ins>", text
-        assert_not pattern.match?(text), text
-      end
-      INSERTION_MISSED.each do |text|
-        assert_includes textile_html(text), "<ins>", text
-        assert_not pattern.match?(text), text
-      end
-      INSERTION_RESIDUAL.each do |text|
-        assert_not_includes textile_html(text), "<ins>", text
-        assert pattern.match?(text), text
-      end
+      assert_matches_redcloth(RedmineRenderSwitcher::Detector::TEXTILE_INSERTION, "<ins>",
+                              counted: INSERTION_COUNTED, not_notation: INSERTION_NOT_NOTATION,
+                              missed: INSERTION_MISSED, residual: INSERTION_RESIDUAL)
     end
 
     should "leave every counted form as plain text in CommonMark" do
@@ -653,13 +765,13 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
 
     should "add Textile points for every counted form (C-1)" do
       INSERTION_COUNTED.each do |text|
-        assert_operator insertion_scores(text).first, :>=, 3, text
+        assert_operator scores(text).first, :>=, 3, text
       end
     end
 
     should "add no Textile points for text Textile leaves alone (C-2)" do
       INSERTION_NOT_NOTATION.each do |text|
-        assert_equal 0, insertion_scores(text).first, text
+        assert_equal 0, scores(text).first, text
       end
     end
 
@@ -686,17 +798,17 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     end
 
     should "count each occurrence (C-1-3)" do
-      assert_equal [ 6, 0 ], insertion_scores("+ab+ c +de+\n")
+      assert_equal [ 6, 0 ], scores("+ab+ c +de+\n")
     end
 
     should "weigh against other evidence the way the contract says (C-4-1..C-4-4)" do
       dash_list = "- one\n- two\n"
       link = "[l](https://ex.com/)\n"
 
-      assert_equal [ 3, 3 ], insertion_scores("+ab+\n\n#{dash_list}")
-      assert_equal [ 3, 4 ], insertion_scores("+ab+\n\n#{link}")
-      assert_equal [ 6, 3 ], insertion_scores("+ab+ +cd+\n\n#{dash_list}")
-      assert_equal [ 6, 4 ], insertion_scores("+ab+ +cd+\n\n#{link}")
+      assert_equal [ 3, 3 ], scores("+ab+\n\n#{dash_list}")
+      assert_equal [ 3, 4 ], scores("+ab+\n\n#{link}")
+      assert_equal [ 6, 3 ], scores("+ab+ +cd+\n\n#{dash_list}")
+      assert_equal [ 6, 4 ], scores("+ab+ +cd+\n\n#{link}")
 
       one = RedmineRenderSwitcher::Detector.detect("+ab+\n\n#{dash_list}", threshold: DEFAULT_THRESHOLD)
       two = RedmineRenderSwitcher::Detector.detect("+ab+ +cd+\n\n#{link}", threshold: DEFAULT_THRESHOLD)
@@ -713,10 +825,76 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
 
       assert_equal [ "common_mark", 0, 3 ], [ inline.format, inline.textile_score, inline.markdown_score ]
       assert_equal [ "common_mark", 0, 10 ], [ fence.format, fence.textile_score, fence.markdown_score ]
-      assert_equal [ 0, 0 ], insertion_scores("Intro.\n\n<pre>\n+ins+\n</pre>\n")
-      assert_equal [ 0, 0 ], insertion_scores("Intro.\n\n    +ins+\n\nEnd.\n")
+      assert_equal [ 0, 0 ], scores("Intro.\n\n<pre>\n+ins+\n</pre>\n")
+      assert_equal [ 0, 0 ], scores("Intro.\n\n    +ins+\n\nEnd.\n")
       # Accepted (research decision 6): one spaced occurrence inside inline code ties.
-      assert_equal [ 3, 3 ], insertion_scores("`a +bc+ d`\n")
+      assert_equal [ 3, 3 ], scores("`a +bc+ d`\n")
+    end
+  end
+
+  # ADR-0007: !…! is Textile's image notation. Each fixture list is checked
+  # against what RedCloth really renders, so the pattern can only count what
+  # Textile turns into an image, apart from the misses and residual false
+  # positives the ADR lists.
+  context "RedmineRenderSwitcher::Detector::TEXTILE_IMAGE" do
+    should "match exactly where RedCloth renders an image, apart from the accepted misses and residuals" do
+      assert_matches_redcloth(RedmineRenderSwitcher::Detector::TEXTILE_IMAGE, "<img",
+                              counted: IMAGE_COUNTED, not_notation: IMAGE_NOT_NOTATION,
+                              missed: IMAGE_MISSED, residual: IMAGE_RESIDUAL)
+    end
+
+    should "leave every counted form as plain text in CommonMark" do
+      (IMAGE_COUNTED + IMAGE_RESIDUAL).each do |text|
+        assert_not_includes common_mark_html(text), "<img", text
+      end
+    end
+
+    should "add Textile points for every counted form (C-1)" do
+      IMAGE_COUNTED.each do |text|
+        assert_operator scores(text).first, :>=, 3, text
+      end
+    end
+
+    should "decide a lone pasted image, with LF or CRLF, as Textile 3:0 (C-1-1, C-1-2)" do
+      assert_equal [ 3, 0, "textile", :score ],
+                   verdict("!{width: 794px}.clipboard-202512151503-abcde.png!\n")
+      assert_equal [ 3, 0, "textile", :score ],
+                   verdict("Some description.\r\n\r\n!{width: 794px}.clipboard-202512151503-abcde.png!\r\n")
+    end
+
+    should "count each styled image on one line (C-1-3)" do
+      assert_equal [ 6, 0 ], scores("!{width: 794px}.a.png! and !{width: 10px}.b.png!\n")
+    end
+
+    should "add no Textile points for text Textile leaves alone (C-2)" do
+      IMAGE_NOT_NOTATION.each do |text|
+        assert_equal 0, scores(text).first, text
+      end
+    end
+
+    should "leave notation glued to a word and CJK prose undecided (C-2-1, C-2-2)" do
+      assert_equal [ 0, 0, nil, :no_signal ], verdict("x!a.png!")
+      assert_equal [ 0, 0, nil, :no_signal ], verdict("すごい!(笑)次はa.png!")
+    end
+
+    should "weigh against other evidence and code the way the contract says (C-5)" do
+      paste = "!{width: 794px}.a.png!"
+      dash_list = "- one\n- two\n"
+      {
+        "#{paste}\n\n#{dash_list}" => [ 3, 3, nil, :below_threshold ],
+        "#{paste}\n\n[l](https://ex.com/)\n" => [ 3, 4, nil, :below_threshold ],
+        "#{paste} and #{paste}\n\n#{dash_list}" => [ 6, 3, "textile", :score ],
+        "Intro.\n\n```\n#{paste}\n```\n" => [ 0, 10, "common_mark", :score ],
+        "Intro.\n\n<pre>\n#{paste}\n</pre>\n" => [ 0, 0, nil, :no_signal ],
+        "Intro.\n\n    #{paste}\n\nEnd.\n" => [ 0, 0, nil, :no_signal ],
+        "`#{paste}`\n" => [ 0, 3, "common_mark", :score ]
+      }.each do |text, expected|
+        assert_equal expected, verdict(text), text
+      end
+    end
+
+    should "leave a Markdown image followed by an exclamation mark at 3:4, below the threshold" do
+      assert_equal [ 3, 4, nil, :below_threshold ], verdict("![a.png](a.png)!\n")
     end
   end
 
@@ -829,10 +1007,11 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
       assert_kind_of Integer, RedmineRenderSwitcher::Detector::VERSION
     end
 
-    # ADR-0006 (Textile insertion notation) moves verdicts too, so HTML cached
-    # before it must not be reused. This value must never be lowered.
-    should "be at least 6 so that HTML cached before the +text+ insertion rule is not reused" do
-      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 6
+    # ADR-0006 (Textile insertion notation) and ADR-0007 (Textile image notation
+    # with styled attribute blocks) move verdicts too, so HTML cached before them
+    # must not be reused. This value must never be lowered.
+    should "be at least 7 so that HTML cached before the styled image rule is not reused" do
+      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 7
     end
   end
 end

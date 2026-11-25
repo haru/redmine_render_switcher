@@ -1,8 +1,8 @@
 ---
 title: Detector line patterns and their traps
 type: component
-sources: [S003, S004, S005]
-updated: 2026-10-31
+sources: [S003, S004, S005, S007, S008]
+updated: 2026-11-25
 ---
 
 # Detector line patterns and their traps
@@ -46,12 +46,15 @@ constants in `detector.rb`, each measured against Redmine 7.0.1. (S003)
 > line may be a Markdown heading, which takes no continuation, so an indented
 > block under it is code and must stay masked. Code wins. (S003)
 
-## Inline pattern with boundary conditions
+## Inline patterns with boundary conditions
 
-`TEXTILE_INSERTION` (`+text+`, 3 points) is the one table pattern that uses
-look-behind and look-ahead to check the characters around the notation, instead of
-a column-0 anchor. Its rules and trade-offs are on
-[Textile insertion scoring](./detector-textile-insertion.md). (S005)
+`TEXTILE_INSERTION` (`+text+`, 3 points) and `TEXTILE_IMAGE` (`!…!`, 3 points)
+are the table patterns that check the characters around the notation with
+look-behind instead of a column-0 anchor. `TEXTILE_IMAGE` uses the negative
+look-behind `(?<![^\s>|])` so the start of the text needs no separate branch
+and CRLF line starts come out of the same expression. Their rules and
+trade-offs are on [Textile insertion scoring](./detector-textile-insertion.md)
+and [image scoring](./detector-textile-image.md). (S005, S007, S008)
 
 ## Deliberately not scored
 

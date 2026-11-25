@@ -210,6 +210,40 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
     end
   end
 
+  # ADR-0007: the styled image notation Redmine's clipboard paste writes must
+  # render as an image on a site of either format (C-6-1, C-6-2).
+  context "with a pasted styled image" do
+    setup { @body = "!{width: 794px}.clipboard-202512151503-abcde.png!" }
+
+    should "render an image with the style attribute under either setting" do
+      %w[textile common_mark].each do |format|
+        html = render_with_site_format(format, @body)
+
+        assert_includes html, "<img", format
+        assert_includes html, "width: 794px", format
+        assert_not_includes html, "!{width", format
+      end
+    end
+
+    # The notation glued to a word is no image in Textile either, so a Markdown
+    # site must keep rendering it as the text it is (C-6-3).
+    should "keep an exclamation mark glued to a word as text on a Markdown site" do
+      html = render_with_site_format("common_mark", "x!a.png!")
+
+      assert_includes html, "x!a.png!"
+      assert_not_includes html, "<img"
+    end
+
+    # The directive wins over the score: a Textile-pasted body with a markdown
+    # directive stays Markdown (C-6-4).
+    should "let a markdown directive beat the image score" do
+      html = render_with_site_format("textile", "<!-- render_switcher: markdown -->\n\n#{@body}")
+
+      assert_not_includes html, "<img"
+      assert_includes html, "!{width"
+    end
+  end
+
   # FR-021: notation that only Markdown reads as structure has to render as
   # structure whichever format the site is set to.
   context "with a Markdown list or heading" do

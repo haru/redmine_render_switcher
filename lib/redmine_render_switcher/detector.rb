@@ -30,7 +30,7 @@ module RedmineRenderSwitcher
     # The configured threshold is *not* covered here, because it is a setting
     # rather than a change to this code; {CacheKey} puts its current value in the
     # key separately.
-    VERSION = 6
+    VERSION = 7
 
     # Redmine's name for the Textile format.
     TEXTILE = "textile"
@@ -119,6 +119,37 @@ module RedmineRenderSwitcher
     TEXTILE_INSERTION =
       /(?<=^|[\s(]|^[*|]|\s\*)\+[^\s+][^+\n]*[^\s+]\+(?=$|[\s.,;:!?)*|\u3002\u3001\uFF09])/
 
+    # Textile image notation, <tt>!path.png!</tt>, including the attribute blocks
+    # Redmine's clipboard paste writes, as in
+    # <tt>!{width: 794px}.clipboard-....png!</tt> (ADR-0007).
+    #
+    # Textile turns the notation into an +<img>+ element and CommonMark leaves the
+    # exclamation marks as text, so counting it is what the "renders differently"
+    # rule of ADR-0005 asks for. The pattern follows RedCloth's IMAGE_RE and its
+    # C_CLAS / C_STYL / C_LNGE attribute rules. The gaps in both directions (the
+    # misses and the residual false positives, among them repeated or reordered
+    # attributes and a +|+ that is not a table cell) are listed in ADR-0007 and
+    # pinned against RedCloth's own output in the detector tests.
+    #
+    # The opener is a negative lookbehind, unlike {TEXTILE_INSERTION}, which needs
+    # an explicit start-of-line branch: <tt>\s</tt> covers the newline, so CRLF and
+    # line starts come out of the same expression. The +|+ is the plugin's own
+    # approximation of a table cell, which Textile reaches through the +>+ of a
+    # generated +<td>+.
+    TEXTILE_IMAGE = /
+      (?<![^\s>|])                      # start of text, whitespace, > or | before the bang
+      !
+      [<=>]?                            # alignment
+      (?:                               # attribute blocks, any order and count
+        \( [^")\n]+ \)                  #   class and id
+      | \{ [^{"}\n] [^"}\n]+ \}         #   style
+      | \[ [a-z_-]+ \]                  #   language
+      )*
+      [^\s(!]* [.\/] [^\s(!]*           # file name or URL; needs a dot or a slash
+      (?: \x20? \( (?: [^()\n] | \( [^()\n]+ \) )+ \) )?   # alternative text, one space away at most
+      !
+    /x
+
     # Notation that only Textile gives meaning to, with its weight.
     #
     # A notation earns a place here only when one format renders it as markup and
@@ -145,7 +176,7 @@ module RedmineRenderSwitcher
     TEXTILE_PATTERNS = {
       /^h[1-6]\.\s/ => 5,
       /"[^"\n]+":\S+/ => 4,
-      %r{!\S*[./]\S*!} => 3,
+      TEXTILE_IMAGE => 3,
       /^bq\.\s/ => 4,
       TEXTILE_INLINE_CODE => 3,
       TEXTILE_INSERTION => 3,
