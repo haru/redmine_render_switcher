@@ -1,8 +1,8 @@
 ---
 title: Detector design
 type: component
-sources: [S001, S002, S003, S004, S005]
-updated: 2026-10-31
+sources: [S001, S002, S003, S004, S005, S007, S008]
+updated: 2026-11-25
 ---
 
 # Detector design
@@ -23,7 +23,8 @@ decision is explainable. (S001, S002)
 
 It also owns `Detector::VERSION`, which feeds the
 [cache key](./cache-key-detector-version.md); the rule revision bumped it from
-3 to 4, and it later moved to 5 and then to 6 with the ADR-0006 insertion pattern. (S002, S003, S005)
+3 to 4, and it later moved to 5, to 6 with the ADR-0006 insertion pattern, and
+to 7 with the ADR-0007 styled image pattern. (S002, S003, S005, S008)
 
 ## Ambiguity is solved by context, not patterns
 
@@ -39,9 +40,11 @@ new bare pattern. (S004)
   `> quote`. (S001)
 - `**bold**` is no longer scored: both formats render it as bold, so it carries
   no information. (S003, S004)
-- Decisive Textile: `h1.`–`h6.`, `"text":url`, `!image!`, `bq.`, `@code@`,
+- Decisive Textile: `h1.`–`h6.`, `"text":url`, `!…!` images with styled
+  attribute blocks (`!{width: 794px}.a.png!`, see
+  [image scoring](./detector-textile-image.md)), `bq.`, `@code@`,
   `|_. header`. Decisive Markdown: fenced code, `[text](url)`, `![](url)`,
-  `` `code` ``, `|---|`. (S001, S003)
+  `` `code` ``, `|---|`. (S001, S003, S007)
 - `+text+` is decisive Textile at 3 points; see
   [insertion scoring](./detector-textile-insertion.md). (S005)
 - New structural evidence: dash and numbered lists, Setext headings, and tables
@@ -73,6 +76,7 @@ new bare pattern. (S004)
 [Overview](./auto-format-detection-overview.md) ·
 [Line patterns](./detector-line-patterns.md) ·
 [Insertion scoring](./detector-textile-insertion.md) ·
+[Image scoring](./detector-textile-image.md) ·
 [Accepted behaviour changes](./detector-revision-accepted-changes.md) ·
 [Directive](./directive-html-comment-form.md) ·
 [AutoSwitch](./auto-switch-module.md) ·

@@ -144,6 +144,50 @@ class RenderSwitcherInsertionSectionEditTest < Redmine::IntegrationTest
   end
 end
 
+# ADR-0007 / FR-012: a Textile page whose sections hold pasted styled images on a
+# Markdown site is detected as Textile, and a section save leaves every byte
+# outside the edited section alone. The images are the Textile evidence here, so
+# this proves the round trip, not the detection; the detection is pinned by the
+# unit tests.
+class RenderSwitcherImageSectionEditTest < Redmine::IntegrationTest
+  include SectionEditSetup
+
+  PAGE_TITLE = "RenderSwitcherImageSections"
+
+  IMAGE_BODY = "h2. A\n\n!{width: 794px}.clipboard-a.png!\n\nh2. B\n\n" \
+               "!{width: 794px}.clipboard-b.png!\n\nh2. C\n\n!{width: 794px}.clipboard-c.png!\n"
+
+  def setup
+    super
+    create_page("common_mark", IMAGE_BODY)
+  end
+
+  test "saving one section leaves every other byte of the page alone" do
+    get "/projects/ecookbook/wiki/#{PAGE_TITLE}"
+
+    assert_response :success
+    assert_equal 3, response.body.scan("<img").size
+
+    formatter = Redmine::WikiFormatting.formatter_for("common_mark")
+    before = @page.content.text
+    _section, hash = formatter.new(before).get_section(2)
+
+    put("/projects/ecookbook/wiki/#{PAGE_TITLE}",
+        params: {
+          content: { text: "h2. B\n\n!{width: 794px}.clipboard-b2.png!", version: @page.content.version },
+          section: 2,
+          section_hash: hash
+        })
+
+    assert_response :redirect
+    after = @page.reload.content.text
+
+    assert_equal formatter.new(before).update_section(2, "h2. B\n\n!{width: 794px}.clipboard-b2.png!"), after
+    assert_includes after, "h2. A\n\n!{width: 794px}.clipboard-a.png!\n\n"
+    assert_includes after, "\n\nh2. C\n\n!{width: 794px}.clipboard-c.png!"
+  end
+end
+
 # ADR-0006, Consequences: the underline is the only Textile evidence here and it
 # outweighs the document's own Setext headings, so the whole page is read as Textile.
 # The page then has no sections at all, and the rendered HTML and the source
