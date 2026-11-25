@@ -30,9 +30,6 @@ module RedmineRenderSwitcher
     # The configured threshold is *not* covered here, because it is a setting
     # rather than a change to this code; {CacheKey} puts its current value in the
     # key separately.
-    #
-    # History: 7 scores Textile image notation with styled attribute blocks
-    # (ADR-0007); 6 scored Textile insertion notation (ADR-0006).
     VERSION = 7
 
     # Redmine's name for the Textile format.
@@ -124,42 +121,34 @@ module RedmineRenderSwitcher
 
     # Textile image notation, <tt>!path.png!</tt>, including the attribute blocks
     # Redmine's clipboard paste writes, as in
-    # <tt>!{width: 794px}.clipboard-….png!</tt> (ADR-0007).
+    # <tt>!{width: 794px}.clipboard-....png!</tt> (ADR-0007).
     #
     # Textile turns the notation into an +<img>+ element and CommonMark leaves the
     # exclamation marks as text, so counting it is what the "renders differently"
-    # rule of ADR-0005 asks for. The pattern counts only the positions where Textile
-    # itself starts an image, apart from the miss and the residual false positives
-    # listed under ADR-0007's Consequences.
+    # rule of ADR-0005 asks for. The pattern follows RedCloth's IMAGE_RE and its
+    # C_CLAS / C_STYL / C_LNGE attribute rules. The gaps in both directions (the
+    # misses and the residual false positives, among them repeated or reordered
+    # attributes and a +|+ that is not a table cell) are listed in ADR-0007 and
+    # pinned against RedCloth's own output in the detector tests.
     #
-    # The opening exclamation mark follows the start of the text, whitespace, a
-    # <tt>&gt;</tt> or a <tt>|</tt> — a table cell. Written as a negative lookbehind
-    # on <tt>[^\s>|]</tt> so that the start of the text needs no separate branch,
-    # like {TEXTILE_INSERTION} does; <tt>\s</tt> covers the newline, so CRLF and
-    # line starts come out of the same expression.
-    #
-    # The attribute block and the alternative text hold what RedCloth's grammar
-    # (IMAGE_RE and the C_CLAS / C_STYL / C_LNGE rules of redcloth3.rb) allows:
-    # one optional alignment character (<tt>&lt;</tt>, <tt>=</tt>, <tt>&gt;</tt>),
-    # then class/id parentheses, style braces and language brackets in any order
-    # and any number, with spaces allowed inside each of them
-    # (<tt>!(my cls){width: 1px}a.png!</tt>), then a file name or URL that holds a
-    # dot or a slash and no whitespace, parenthesis or exclamation mark, then an
-    # optional alternative text of one line with spaces and one level of nested
-    # parentheses, after at most one space (<tt>!a.png(alt text)!</tt>). The file
-    # name condition is what keeps <tt>!wow!</tt>-style emphasis from matching.
-    #
-    # Unlike RedCloth, which reads the three attribute kinds in three fixed orders,
-    # the block allows any order and any count. That counts <tt>!(a)(b)c.png!</tt>
-    # and <tt>!{a: b}{c: d}e.png!</tt> although Textile renders no image for them;
-    # the shape is rare in prose and listing the orders would triple the expression
-    # for it (ADR-0007, accepted over-detection).
-    #
-    # Accepted miss: an alternative text spanning two lines
-    # (<tt>!a.png(alt\ntext)!</tt>), which Textile renders as an image and the
-    # pattern does not match, because every bracketed part stops at the newline.
-    TEXTILE_IMAGE =
-      /(?<![^\s>|])![<=>]?(?:\([^")\n]+\)|\{[^{"}\n][^"}\n]+\}|\[[a-z_-]+\])*[^\s(!]*[.\/][^\s(!]*(?:[ \t]?\((?:[^()\n]|\([^()\n]+\))+\))?!/
+    # The opener is a negative lookbehind, unlike {TEXTILE_INSERTION}, which needs
+    # an explicit start-of-line branch: <tt>\s</tt> covers the newline, so CRLF and
+    # line starts come out of the same expression. The +|+ is the plugin's own
+    # approximation of a table cell, which Textile reaches through the +>+ of a
+    # generated +<td>+.
+    TEXTILE_IMAGE = /
+      (?<![^\s>|])                      # start of text, whitespace, > or | before the bang
+      !
+      [<=>]?                            # alignment
+      (?:                               # attribute blocks, any order and count
+        \( [^")\n]+ \)                  #   class and id
+      | \{ [^{"}\n] [^"}\n]+ \}         #   style
+      | \[ [a-z_-]+ \]                  #   language
+      )*
+      [^\s(!]* [.\/] [^\s(!]*           # file name or URL; needs a dot or a slash
+      (?: \x20? \( (?: [^()\n] | \( [^()\n]+ \) )+ \) )?   # alternative text, one space away at most
+      !
+    /x
 
     # Notation that only Textile gives meaning to, with its weight.
     #

@@ -69,21 +69,6 @@ class RedmineRenderSwitcherCacheKeyTest < ActiveSupport::TestCase
       assert_not_equal current, bumped
     end
 
-    # C-6-5: the styled-image rule (ADR-0007) moved the generation from 6 to 7, so
-    # an entry cached under 6 must not be served. K-01 checks the suffix against
-    # the current constant; this pins the bump itself.
-    should "produce a key different from the generation-6 one" do
-      enable_auto_detect(true)
-      current = Redmine::WikiFormatting.cache_key_for("textile", BIG_TEXT, @issue, "description")
-
-      with_detector_version(6) do
-        old = Redmine::WikiFormatting.cache_key_for("textile", BIG_TEXT, @issue, "description")
-
-        assert old.end_with?("-rs6t2"), old
-        assert_not_equal current, old
-      end
-    end
-
     # K-03
     should "return nil when there is no object" do
       enable_auto_detect(true)

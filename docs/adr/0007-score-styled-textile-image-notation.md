@@ -28,31 +28,39 @@ lives in `specs/004-detect-styled-textile-image/research.md`.
    as the `TEXTILE_IMAGE` constant:
 
    ```ruby
-   /(?<![^\s>|])![<=>]?(?:\([^")\n]+\)|\{[^{"}\n][^"}\n]+\}|\[[a-z_-]+\])*[^\s(!]*[.\/][^\s(!]*(?:[ \t]?\((?:[^()\n]|\([^()\n]+\))+\))?!/
+   /(?<![^\s>|])![<=>]?(?:\([^")\n]+\)|\{[^{"}\n][^"}\n]+\}|\[[a-z_-]+\])*[^\s(!]*[.\/][^\s(!]*(?: ?\((?:[^()\n]|\([^()\n]+\))+\))?!/
    ```
 
-   - The opening `!` counts only at the start of the text, after whitespace,
-     `>` or `|` — the positions where Textile itself starts an image.
+   - The opening `!` counts at the start of the text and after whitespace,
+     `>` or `|`. Textile starts an image after whitespace or `>` (a table
+     cell is reached through the `>` of its generated `<td>`); the `|` is the
+     plugin's own approximation of a table cell, so a `|` outside a table
+     also counts (see Consequences).
    - The attribute block accepts alignment (`<`, `=`, `>`), class/id
      parentheses, style braces, and language brackets in any order and
      number, with whitespace allowed inside (`width: 794px`, `my cls`).
    - The alternative text accepts spaces and one level of nested parentheses
-     after up to one space, on a single line.
+     after at most one space (a tab or a second space does not count, as in
+     Textile), on a single line.
    - The file name or URL must contain `.` or `/` and no whitespace, `(` or
-     `!`, which keeps `!wow!`-style emphasis from matching.
+     `!`. A name without either, such as `!wow!`, is deliberately not
+     counted although Textile renders it as an image (see Consequences):
+     it is the shape most likely to appear in ordinary prose.
    - Unlike RedCloth, which reads the three attribute kinds in three fixed
-     orders, the pattern allows any order and any count; see point 2. Unlike
-   RedCloth's `IMAGE_RE`, the pattern does not include the "dot plus space"
-   branch (`!{width: 1px}. a.png!`): measured against Redmine, Textile does
-   not render that shape as an image, and including it was the only
-   over-detection of the first candidate.
+     orders, the pattern allows any order and any count; see point 2.
+   - Unlike RedCloth's `IMAGE_RE`, the pattern does not include the "dot plus
+     space" branch (`!{width: 1px}. a.png!`): measured against Redmine,
+     Textile does not render that shape as an image, and including it was the
+     only over-detection of the first candidate.
 
 2. **Repeating an attribute kind is accepted as over-detection.**
    `!(a)(b)c.png!` and `!{a: b}{c: d}e.png!` count (3 points) although Textile
    renders neither as an image. Listing RedCloth's three fixed orders instead
    would triple the expression's length for a shape that needs two stacked
    attributes plus a dotted file name plus a boundary-respecting `!` — rare
-   in ordinary prose. Pinned in contract C-4.
+   in ordinary prose. Pinned by the `IMAGE_RESIDUAL` fixtures of the detector
+   test. Attributes in an order RedCloth does not accept
+   (`!(c)[ja]{w: 1px}a.png!`) count for the same reason.
 
 3. **Some shapes the current pattern counts stop counting**, matching
    Textile, which never renders them as images:
@@ -63,12 +71,14 @@ lives in `specs/004-detect-styled-textile-image/research.md`.
    | `(!a.png!)`, `「!a.png!」`, `"!a.png!"`, `*!a.png!*` | no | matches | no match |
    | `すごい!(笑)次はa.png!` | no | matches | no match |
    | `!a(b).png!`, `!https://ex.com/a_(b).png!` | no | matches | no match |
-   | `` `!{width: 794px}.a.png!` `` (inline code) | — | 3:3 undecided | 0:3 CommonMark |
+   | `` `!a.png!` `` (inline code) | no | 3:3 undecided | 0:3 CommonMark |
 
    A file name holding `(` is read by RedCloth as the start of alternative
-   text, so it produces no image and does not count. Inline code now leans
-   Markdown (0:3) because the notation stops matching while the backtick
-   still scores for CommonMark. Documents whose only image evidence is such a
+   text, so it produces no image and does not count. Inline code holding
+   the plain notation (`` `!a.png!` ``) now leans Markdown (0:3) because the
+   notation stops matching while the backtick still scores for CommonMark;
+   the styled shape in inline code (`` `!{width: 794px}.a.png!` ``) never
+   matched the old pattern and stays 0:3. Documents whose only image evidence is such a
    shape follow the site setting from now on; Textile would not have shown an
    image for them either, so nothing breaks visually.
 
@@ -107,13 +117,17 @@ move and the formatted-HTML cache must not serve HTML rendered before it
   image for it anyway.
 - **Repeated attributes of one kind count without an image** (Decision 2);
   the shape is contrived and pinned as accepted over-detection.
-- **Two-line alternative text is missed** (`!a.png(alt\ntext)!`): Textile
-  renders it as an image, the pattern does not match across lines. It follows
-  the site setting unless other evidence decides.
-- **A Markdown image whose alternative text ends in `!` may still count**,
-  as in `![a.png](a.png)!`, but the Markdown pattern already scores 4 points
-  for the same text, so the verdict does not move. The new pattern is
-  strictly narrower here than the old one.
+- **Some Textile images are missed**, and the text follows the site setting
+  unless other evidence decides: a file name without a dot or a slash
+  (`!wow!`, `!img_1!`), an image wrapped in other notation (`==!a.png!==`),
+  and any attribute block or alternative text spanning two lines
+  (`!a.png(alt\ntext)!`), because every bracketed part stops at the newline.
+- **A `|` or `>` that is not a table cell still opens an image**
+  (`a |!a.png! b`, `<p>!a.png!</p>`): Textile renders no image there. Both
+  shapes are contrived and were already counted by the old pattern.
+- **A Markdown image followed by `!` counts for Textile too**
+  (`![a.png](a.png)!`, which Textile does render as an image): it scores
+  3:4 and stays below the threshold, so the verdict does not move.
 - **Re-verify when Redmine updates its formatters:** that Textile still
   renders `!…!` with attribute blocks as images at these boundaries, that the
   style/class/language attribute grammar of RedCloth is unchanged, and that

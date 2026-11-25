@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `redmine_render_switcher` auto-detects whether a Redmine text (issue description, journal, wiki page, news …) is written in **Textile** or **Markdown** and renders it with the matching formatter, so a long-time Textile site can let users write new content in Markdown without converting anything. Only rendering changes; stored text is never modified and the plugin adds no tables or migrations.
 
-**Current state: released as v0.1.1; styled Textile image scoring (`!{width: 794px}.a.png!`, the shape clipboard paste writes) is being added on `bugfix/004-detect-styled-textile-image` (ADR-0007), after the insertion scoring of ADR-0006 and the detector rule revision of ADR-0005. `Detector::VERSION` is 7.** The full suite passes (193 runs), RuboCop is clean, YARD is at 100% and C0 coverage of `lib/` is 100%. New work is changes to a working plugin, not a greenfield build.
+**Current state: released as v0.1.2; styled Textile image scoring (`!{width: 794px}.a.png!`, the shape clipboard paste writes) is being added on `bugfix/004-detect-styled-textile-image` (ADR-0007), after the insertion scoring of ADR-0006 and the detector rule revision of ADR-0005. `Detector::VERSION` is 7.** The full suite passes (192 runs), RuboCop is clean, YARD is at 100% and C0 coverage of `lib/` is 100%. New work is changes to a working plugin, not a greenfield build.
 
 ## Architecture
 
