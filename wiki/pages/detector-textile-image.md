@@ -1,8 +1,8 @@
 ---
 title: Textile image notation (!…!) scoring with styled attribute blocks
 type: decision
-sources: [S007, S008]
-updated: 2026-11-25
+sources: [S007, S008, S009]
+updated: 2026-11-27
 ---
 
 # Textile image notation (`!…!`) scoring with styled attribute blocks
@@ -12,8 +12,9 @@ constant that replaced the old `%r{!\S*[./]\S*!}` row in the pattern table. The
 old pattern missed the shape Redmine's clipboard paste writes,
 `!{width: 794px}.clipboard-….png!`, because the style block holds spaces — on a
 Markdown site the pasted body kept rendering as raw text (issue #15). Recorded
-in ADR-0007; `Detector::VERSION` went 6 to 7, so the cache key now ends in
-`-rs7t2` (see [cache key](./cache-key-detector-version.md)). (S007, S008)
+in ADR-0007; `Detector::VERSION` went 6 to 7, so the cache key ended in
+`-rs7t2` at the time (it has since moved to `-rs8t2` with the color span
+pattern; see [cache key](./cache-key-detector-version.md)). (S007, S008, S009)
 
 ## The pattern follows RedCloth's grammar
 
@@ -86,5 +87,6 @@ site settings, and a section-edit round trip. (S007, S008)
 
 [Detector design](./detector-design.md) ·
 [Insertion scoring](./detector-textile-insertion.md) ·
+[Color span scoring](./detector-textile-color-span.md) ·
 [Line patterns](./detector-line-patterns.md) ·
 [Cache key](./cache-key-detector-version.md)

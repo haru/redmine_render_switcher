@@ -55,3 +55,4 @@ surrounding software changes.
 | [0005](./0005-score-only-notation-that-renders-differently.md) | Score only notation that renders differently, one score per block, precision before recall | Accepted | 2026-09-19 |
 | [0006](./0006-score-textile-insertion-notation.md) | Score Textile insertion notation (`+text+`) only where Textile renders it | Accepted | 2026-10-31 |
 | [0007](./0007-score-styled-textile-image-notation.md) | Score Textile image notation with RedCloth's grammar, including styled attribute blocks | Accepted | 2026-11-25 |
+| [0008](./0008-score-textile-color-span-notation.md) | Score Textile color span notation (`%{color:red}text%`) | Accepted | 2026-11-27 |

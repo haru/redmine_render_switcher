@@ -188,6 +188,52 @@ class RenderSwitcherImageSectionEditTest < Redmine::IntegrationTest
   end
 end
 
+# ADR-0008 / FR-012: a Textile page whose sections hold color spans on a
+# Markdown site is detected as Textile, and a section save leaves every byte
+# outside the edited section alone. The spans are the Textile evidence here,
+# so this proves the round trip, not the detection; the detection is pinned by
+# the unit tests.
+class RenderSwitcherColorSpanSectionEditTest < Redmine::IntegrationTest
+  include SectionEditSetup
+
+  PAGE_TITLE = "RenderSwitcherColorSpanSections"
+
+  COLOR_SPAN_BODY = "h2. A\n\n結果は %{color:red}NG-A% でした\n\nh2. B\n\n" \
+                    "結果は %{color:red}NG-B% でした\n\nh2. C\n\n結果は %{color:red}NG-C% でした\n"
+
+  def setup
+    super
+    create_page("common_mark", COLOR_SPAN_BODY)
+  end
+
+  test "saving one section leaves every other byte of the page alone" do
+    get "/projects/ecookbook/wiki/#{PAGE_TITLE}"
+
+    assert_response :success
+    assert_equal 3, response.body.scan("<span style=\"color:red;\">").size
+    # The page renders as Textile, so its section numbering must not shift.
+    assert_select "a[href=?]", "/projects/ecookbook/wiki/#{PAGE_TITLE}/edit?section=2"
+
+    formatter = Redmine::WikiFormatting.formatter_for("common_mark")
+    before = @page.content.text
+    _section, hash = formatter.new(before).get_section(2)
+
+    put("/projects/ecookbook/wiki/#{PAGE_TITLE}",
+        params: {
+          content: { text: "h2. B\n\n結果は %{color:red}NG-B2% でした", version: @page.content.version },
+          section: 2,
+          section_hash: hash
+        })
+
+    assert_response :redirect
+    after = @page.reload.content.text
+
+    assert_equal formatter.new(before).update_section(2, "h2. B\n\n結果は %{color:red}NG-B2% でした"), after
+    assert_includes after, "h2. A\n\n結果は %{color:red}NG-A% でした\n\n"
+    assert_includes after, "\n\nh2. C\n\n結果は %{color:red}NG-C% でした"
+  end
+end
+
 # ADR-0006, Consequences: the underline is the only Textile evidence here and it
 # outweighs the document's own Setext headings, so the whole page is read as Textile.
 # The page then has no sections at all, and the rendered HTML and the source

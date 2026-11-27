@@ -13,3 +13,5 @@ Sources are immutable inputs — the wiki never edits them.
 | S006 | specs/003-detect-textile-insertion/plan.md (decision sections) | feature-artifact | 2026-10-31 | 2026-10-31 | detector-textile-insertion.md, constitution-gates-and-adr-obligations.md |
 | S007 | specs/004-detect-styled-textile-image/research.md | feature-artifact | 2026-11-25 | 2026-11-25 | detector-textile-image.md, detector-design.md, detector-line-patterns.md |
 | S008 | specs/004-detect-styled-textile-image/plan.md (decision sections) | feature-artifact | 2026-11-25 | 2026-11-25 | detector-textile-image.md, detector-design.md, detector-line-patterns.md, cache-key-detector-version.md |
+| S009 | specs/007-detect-textile-color-span/research.md | feature-artifact | 2026-11-27 | 2026-11-27 | detector-textile-color-span.md, detector-design.md, detector-line-patterns.md, cache-key-detector-version.md, detector-textile-image.md |
+| S010 | specs/007-detect-textile-color-span/plan.md (decision sections) | feature-artifact | 2026-11-27 | 2026-11-27 | detector-textile-color-span.md, detector-design.md, cache-key-detector-version.md |

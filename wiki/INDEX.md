@@ -15,6 +15,7 @@ page files, not here.
 - [Explicit directive — HTML comment form only](./pages/directive-html-comment-form.md) — no stripping; blank line needed after it in Textile
 - [Textile insertion notation (`+text+`) scoring](./pages/detector-textile-insertion.md) — 3 points, boundary rules, accepted misses; ADR-0006, VERSION 6
 - [Textile image notation (`!…!`) scoring with styled attribute blocks](./pages/detector-textile-image.md) — RedCloth grammar, opener condition, accepted misses; ADR-0007, VERSION 7
+- [Textile color span notation (`%{color:red}text%`) scoring](./pages/detector-textile-color-span.md) — `color` property only, QTAGS `:limit` boundaries, accepted misses; ADR-0008, VERSION 8
 - [Score new detector evidence once per block](./pages/detector-score-once-per-block.md) — weights, why per block, two-line list floor; ADR-0005
 - [Detector scan structure — four scans plus one masking machine](./pages/detector-scan-structure.md) — separate context scans, single-pass masking, cost 3.39%
 

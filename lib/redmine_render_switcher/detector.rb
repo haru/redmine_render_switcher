@@ -30,7 +30,7 @@ module RedmineRenderSwitcher
     # The configured threshold is *not* covered here, because it is a setting
     # rather than a change to this code; {CacheKey} puts its current value in the
     # key separately.
-    VERSION = 7
+    VERSION = 8
 
     # Redmine's name for the Textile format.
     TEXTILE = "textile"
@@ -150,6 +150,51 @@ module RedmineRenderSwitcher
       !
     /x
 
+    # Textile color span notation, <tt>%{color:red}text%</tt> (ADR-0008).
+    #
+    # Textile turns the notation into a +<span style="color:…">+ element and
+    # CommonMark leaves the characters as plain text, so counting it is what the
+    # "renders differently" rule of ADR-0005 asks for. The style block counts
+    # only when it holds a +color+ property: a name that is exactly +color+
+    # (case-insensitive) followed immediately by a colon, placed right after the
+    # opening brace or after a semicolon-ended property, whitespace allowed in
+    # between. A block holding other properties only (+background+,
+    # +font-size+, …) counts nothing although Textile renders a span for it too,
+    # because issue #16 measured color spans alone; neither does
+    # +background-color+, whose name merely contains +color+, nor +color :red+,
+    # whose style Redmine throws away, nor a block without any colon, which is
+    # the shape of Ruby i18n format strings.
+    #
+    # The boundaries follow RedCloth's +QTAGS+ +:limit+ rules, so the pattern
+    # counts only the positions Textile really renders a span. The opener sits
+    # at the start of a line or after whitespace, +(+, +>+ or +|+ (the +|+ being
+    # the same table-cell approximation {TEXTILE_IMAGE} makes), optionally
+    # preceded by up to two +*+ (strong text around a span). The body is
+    # non-empty, stays within its paragraph and does not end with whitespace.
+    # The closer is followed by end of line, whitespace or punctuation, written
+    # as +[[:punct:]]+ because RedCloth itself tests punctuation that way, so
+    # full-width Japanese punctuation matches too. The body is matched lazily,
+    # repeating RedCloth's own +.*?+ behaviour, and the expression is ASCII-only
+    # and fixes no encoding, so +match?+ raises nothing on a Shift_JIS or
+    # BINARY string.
+    #
+    # The misses this accepts (a body ending at a newline, a class attribute
+    # before the style block, emphasis other than stars around the span) and the
+    # residual false positives (a +|+ that is not a table cell, a value Redmine's
+    # +STYLES_RE+ rejects) are listed in ADR-0008 and pinned against RedCloth's
+    # own output in the detector tests.
+    TEXTILE_COLOR_SPAN = /
+      (?<=^|[\s(>|])                    # start of line, whitespace, (, > or | before the percent
+      \*{0,2}                           # up to two strong or emphasis stars around the span
+      %                                 # opening percent, style block follows
+      \{ (?:(?!\{)[^"}\n]*;)? [ \t]* color: [^"}\n]* \}
+                                        # one-line style block holding a color property
+      (?: [^\n] | \n(?![ \t]*$) )*? \S  # span body: non-empty, within its paragraph,
+                                        # not ending in whitespace
+      %                                 # closing percent
+      (?=$|\s|[[:punct:]])              # end of line, whitespace or punctuation after it
+    /xi
+
     # Notation that only Textile gives meaning to, with its weight.
     #
     # A notation earns a place here only when one format renders it as markup and
@@ -164,10 +209,13 @@ module RedmineRenderSwitcher
     # * +_text_+, +> quote+, +* item+ and +---+, which both formats render alike.
     # * +ABBR(text)+, which matches ordinary prose such as +GET(path)+, and +p. +,
     #   which matches +p. s.+.
-    # * Deletion, span and citation inline markup, footnote markers (+fn1. +) and
-    #   Markdown strikethrough (+~~text~~+): too rare to be worth a pattern, for
-    #   either format. Insertion (<tt>+text+</tt>) used to be on this list and is scored by
-    #   {TEXTILE_INSERTION} since ADR-0006.
+    # * Deletion, citation and attribute-less span inline markup, footnote
+    #   markers (+fn1. +) and Markdown strikethrough (+~~text~~+): too rare to
+    #   be worth a pattern, for either format. Insertion (<tt>+text+</tt>) used
+    #   to be on this list and is scored by {TEXTILE_INSERTION} since ADR-0006;
+    #   the color span (<tt>%{color:red}text%</tt>) followed via
+    #   {TEXTILE_COLOR_SPAN} since ADR-0008, so the span left here is the
+    #   attribute-less kind.
     # * Markdown reference links and autolinks.
     # * The +-+ Setext underline, because +---+ is also the horizontal rule that both
     #   formats render alike, and a line of dashes alone does not say which it is.
@@ -180,6 +228,7 @@ module RedmineRenderSwitcher
       /^bq\.\s/ => 4,
       TEXTILE_INLINE_CODE => 3,
       TEXTILE_INSERTION => 3,
+      TEXTILE_COLOR_SPAN => 3,
       /^\|_\./ => 5
     }.freeze
 

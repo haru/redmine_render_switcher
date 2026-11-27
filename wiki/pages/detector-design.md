@@ -1,8 +1,8 @@
 ---
 title: Detector design
 type: component
-sources: [S001, S002, S003, S004, S005, S007, S008]
-updated: 2026-11-25
+sources: [S001, S002, S003, S004, S005, S007, S008, S009, S010]
+updated: 2026-11-27
 ---
 
 # Detector design
@@ -23,8 +23,9 @@ decision is explainable. (S001, S002)
 
 It also owns `Detector::VERSION`, which feeds the
 [cache key](./cache-key-detector-version.md); the rule revision bumped it from
-3 to 4, and it later moved to 5, to 6 with the ADR-0006 insertion pattern, and
-to 7 with the ADR-0007 styled image pattern. (S002, S003, S005, S008)
+3 to 4, and it later moved to 5, to 6 with the ADR-0006 insertion pattern, to
+7 with the ADR-0007 styled image pattern, and to 8 with the ADR-0008 color
+span pattern. (S002, S003, S005, S008, S009)
 
 ## Ambiguity is solved by context, not patterns
 
@@ -47,6 +48,9 @@ new bare pattern. (S004)
   `` `code` ``, `|---|`. (S001, S003, S007)
 - `+text+` is decisive Textile at 3 points; see
   [insertion scoring](./detector-textile-insertion.md). (S005)
+- `%{color:red}text%` is decisive Textile at 3 points, but only the style
+  blocks holding a `color` property; see
+  [color span scoring](./detector-textile-color-span.md). (S009)
 - New structural evidence: dash and numbered lists, Setext headings, and tables
   with or without a separator row, counted once per block. Weights and rationale:
   [score once per block](./detector-score-once-per-block.md). (S003)
