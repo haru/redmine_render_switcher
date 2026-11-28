@@ -712,6 +712,125 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     "<p>!a.png!</p>"
   ].freeze
 
+  # ADR-0008: %{color:red}text% is Textile's color span notation. The fixture
+  # lists below are checked against what RedCloth really renders, so the
+  # pattern can only count where Textile turns the notation into a *colored*
+  # span, apart from the misses and residual false positives the ADR lists.
+
+  # Textile renders a colored span and the pattern counts it (contracts C-1).
+  # The non-ASCII lines are deliberate: prose around the notation (CJK text
+  # without spaces, full-width punctuation) is itself part of what is
+  # verified. The last line holds the notation inside single backticks, which
+  # are not code in Textile: the span after the space renders, CommonMark
+  # renders code, and the shape is counted here although its verdict ties 3:3
+  # (pinned at C-5-4 below).
+  COLOR_SPAN_COUNTED = [
+    "結果は %{color:red}NG% でした",
+    "%{color:red}a b% と %{font-size:2em}c%",
+    "%{color:#f00}赤% と %{background:yellow}黄%",
+    "%{color: red}空白あり%",
+    "%{ color:red}x% y",
+    "%{Color:red}x% y",
+    "%{color:red;font-weight:bold}NG% x",
+    "%{font-weight:bold; color:red}x% y",
+    "%{color:red}複数\n行%",
+    "結果は %{color:red}NG%。",
+    "(%{color:red}NG%)",
+    "*%{color:red}太字赤%*",
+    "|%{color:red}x%|y|",
+    "%{color:red}NG%、次",
+    "%{color:red}NG%！",
+    "|a|%{color:red}x%|",
+    ">%{color:red}NG%",
+    "a>%{color:red}x% y",
+    "**%{color:red}a%**",
+    "a *%{color:red}x%* y",
+    "%{color:red}x%\r\ny",
+    "%{;color:red}x% y",
+    "結果は %{color:red}NG%でした。次は 50% です",
+    "`a %{color:red}NG% b`",
+    "a\t%{color:red}x% y",
+    "%{\tcolor:red}x% y"
+  ].freeze
+
+  # Textile renders no span at all and the pattern must not count it
+  # (contracts C-2). The non-ASCII lines are deliberate, as above.
+  COLOR_SPAN_NOT_NOTATION = [
+    "結果は%{color:red}NG%でした",
+    "結果は %{color:red}NG%でした",
+    "a%{color:red}NG%b",
+    "%{color:red}NG",
+    "%{color:red}NG %",
+    "% {color:red} x%",
+    "達成率 50% と 80% の間",
+    "100%{x} 完了 50%",
+    "%{color:red}a\n\nb% x",
+    "%{color:red}a\r\n\r\nb% x",
+    "%{color:red}a\n  \nb% x",
+    "a*%{color:red}x%* y",
+    "%{color:red}a%a",
+    "`%{color:red}NG%`",
+    "%[ja]{color:red}x% y"
+  ].freeze
+
+  # A real Textile link whose text holds the notation: Textile renders the link
+  # and no span, and the link notation itself is worth 4 points.
+  COLOR_SPAN_IN_LINK = "\"%{color:red}x%\":http://e.com"
+
+  # Textile renders a span for each of these, but not a colored one: a block
+  # without a color property (FR-001 (a)), a name that merely contains "color"
+  # (FR-001 (b)), space between the name and the colon (FR-001 (c)), a block
+  # without any colon (FR-001 (d), the shape of Ruby i18n format strings), a
+  # block spanning two lines, an empty span body, and blocks whose braces or
+  # quotes make Textile keep the text as the span body instead of a style. This
+  # is the one place where Textile renders a span that is deliberately not
+  # counted, so it is pinned against both facts: a span in the HTML, no color
+  # style in it, and no Textile points. The non-ASCII lines are deliberate, as
+  # above.
+  COLOR_SPAN_NOT_COLORED = [
+    "%{background:yellow}黄% x",
+    "%{font-size:2em}c% x",
+    "%{background-color:yellow}x% y",
+    "%{border-color:red}x% y",
+    "%{color :red}x% y",
+    "%{ color : red}x% y",
+    "件数は %{count}件% です",
+    "エラー: %{value} は %{count} 以下%",
+    "%{color:\nred}x%",
+    "%{color:red}%",
+    "%{{a;color:red}x% y",
+    "%{color:\"red\"}x% y",
+    "%{a:\"b\";color:red}x% y",
+    "%{\ncolor:red}x% y"
+  ].freeze
+
+  # Textile renders a colored span but the pattern does not count it
+  # (contracts C-3, ADR-0008): a body ending at a newline, a class attribute
+  # before the style block, a span wrapped in emphasis other than stars, and
+  # a span wrapped in three stars (the pattern allows up to two).
+  COLOR_SPAN_MISSED = [
+    "%{color:red}a\n%",
+    "%(cls){color:red}x% y",
+    "_%{color:red}x%_",
+    "-%{color:red}x%-",
+    "***%{color:red}x%*** y"
+  ].freeze
+
+  # Counted although Textile renders no colored span (contracts C-4,
+  # ADR-0008): a pipe that is not a table cell, and values Redmine's STYLES_RE
+  # rejects, which leave a bare span behind. Pinned so that a change to the
+  # pattern cannot widen or close these gaps unnoticed.
+  COLOR_SPAN_RESIDUAL = [
+    "a|%{color:red}x% y",
+    "%{color:rgb(1,2,3)}x% y",
+    "%{color:}x% y"
+  ].freeze
+
+  # What a colored span looks like in RedCloth's output: a +color+ property at
+  # the start of the style attribute or after another declaration. A bare
+  # +color:+ substring is not enough, since +background-color:+ contains it.
+  COLORED_SPAN_HTML = /<span style="(?:[^"]*;)?color:/i
+
   # Renders +text+ with the bare Textile formatter, skipping the plugin.
   def textile_html(text)
     klass = Redmine::WikiFormatting::Textile::Formatter
@@ -728,11 +847,17 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
   # +counted+ (renders +tag+, pattern matches), +not_notation+ (neither),
   # +missed+ (renders, pattern does not match) and +residual+ (pattern matches,
   # does not render).
+  #
+  # +tag+ is a String or a Regexp. A string keeps only what +include?+ could
+  # say; a regexp says what a substring cannot, such as "a span holding a
+  # +color+ property" — <tt>style="background-color:yellow;"</tt> contains
+  # +color:+ but is a different property, and a property that comes later in
+  # the attribute list is behind other declarations.
   def assert_matches_redcloth(pattern, tag, counted:, not_notation:, missed:, residual:)
     { counted => [ true, true ], not_notation => [ false, false ],
       missed => [ true, false ], residual => [ false, true ] }.each do |texts, (renders, matches)|
       texts.each do |text|
-        assert_equal renders, textile_html(text).include?(tag), text
+        assert_equal renders, textile_html(text).match?(tag), text
         assert_equal matches, pattern.match?(text), text
       end
     end
@@ -898,6 +1023,92 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     end
   end
 
+  context "RedmineRenderSwitcher::Detector::TEXTILE_COLOR_SPAN" do
+    should "match exactly where RedCloth renders a colored span, apart from the accepted misses and residuals" do
+      assert_matches_redcloth(RedmineRenderSwitcher::Detector::TEXTILE_COLOR_SPAN,
+                              COLORED_SPAN_HTML,
+                              counted: COLOR_SPAN_COUNTED, not_notation: COLOR_SPAN_NOT_NOTATION,
+                              missed: COLOR_SPAN_MISSED, residual: COLOR_SPAN_RESIDUAL)
+    end
+
+    # The one deliberate disagreement with Textile's rendering: these make a
+    # span in Textile but hold no color property, so they count nothing. The
+    # colored-span ground truth above cannot see the span, so this pins both
+    # facts separately (FR-001, FR-009).
+    should "not count a styled span that has no color property (FR-001)" do
+      COLOR_SPAN_NOT_COLORED.each do |text|
+        assert_includes textile_html(text), "<span", text
+        assert_not textile_html(text).match?(COLORED_SPAN_HTML), text
+        assert_equal 0, scores(text).first, text
+      end
+    end
+
+    should "leave every counted form as plain text in CommonMark" do
+      (COLOR_SPAN_COUNTED + COLOR_SPAN_RESIDUAL).each do |text|
+        assert_not_includes common_mark_html(text), "<span", text
+      end
+    end
+
+    should "add Textile points for every counted form (C-1)" do
+      COLOR_SPAN_COUNTED.each do |text|
+        assert_operator scores(text).first, :>=, 3, text
+      end
+    end
+
+    should "add no Textile points for text Textile leaves alone (C-2)" do
+      COLOR_SPAN_NOT_NOTATION.each do |text|
+        assert_equal 0, scores(text).first, text
+      end
+      assert_equal 4, scores(COLOR_SPAN_IN_LINK).first, COLOR_SPAN_IN_LINK
+      assert_not textile_html(COLOR_SPAN_IN_LINK).match?(COLORED_SPAN_HTML)
+      assert_not RedmineRenderSwitcher::Detector::TEXTILE_COLOR_SPAN.match?(COLOR_SPAN_IN_LINK)
+    end
+
+    should "decide a lone color span as Textile 3:0, LF or CRLF (C-1-1, C-1-5)" do
+      assert_equal [ 3, 0, "textile", :score ], verdict("結果は %{color:red}NG% でした\n")
+      assert_equal [ 3, 0, "textile", :score ],
+                   verdict("Some description.\r\n\r\n結果は %{color:red}NG% でした\r\n")
+    end
+
+    should "count each occurrence on one line (C-1-2)" do
+      assert_equal [ 6, 0 ], scores("%{color:red}NG% と %{color:blue}OK% x\n")
+    end
+
+    should "accept spaces inside the attribute block (C-1-3, C-1-4)" do
+      assert_equal [ 3, 0, "textile", :score ], verdict("%{color: red}空白あり%\n")
+      assert_equal [ 3, 0, "textile", :score ], verdict("%{font-weight:bold; color:red}x% y\n")
+    end
+
+    should "add to a Textile heading's evidence (C-1-6)" do
+      assert_equal [ 8, 0, "textile", :score ], verdict("h2. Title\n\n%{color:red}NG% x\n")
+    end
+
+    should "stay no_signal for prose and look-alikes (C-2-1..C-2-5)" do
+      {
+        "達成率 50% と 80% の間\n" => [ 0, 0, nil, :no_signal ],
+        "結果は%{color:red}NG%でした\n" => [ 0, 0, nil, :no_signal ],
+        "%{background:yellow}黄% x\n" => [ 0, 0, nil, :no_signal ],
+        "%{background-color:yellow}x% y\n" => [ 0, 0, nil, :no_signal ],
+        "件数は %{count}件% です\n" => [ 0, 0, nil, :no_signal ]
+      }.each do |text, expected|
+        assert_equal expected, verdict(text), text
+      end
+    end
+
+    should "weigh against other evidence and code the way the contract says (C-5-1..C-5-5)" do
+      span = "%{color:red}NG%"
+      {
+        "Intro.\n\n```\n#{span}\n```\n" => [ 0, 10, "common_mark", :score ],
+        "Intro.\n\n<pre>\n#{span}\n</pre>\n" => [ 0, 0, nil, :no_signal ],
+        "Intro.\n\n    #{span}\n\nEnd.\n" => [ 0, 0, nil, :no_signal ],
+        "`a #{span} b`\n" => [ 3, 3, nil, :below_threshold ],
+        "# Title\n\n[link](http://e.com) #{span} x\n" => [ 3, 8, "common_mark", :score ]
+      }.each do |text, expected|
+        assert_equal expected, verdict(text), text
+      end
+    end
+  end
+
   context "RedmineRenderSwitcher::Detector::Result" do
     should "carry only the format, the two scores and the reason" do
       assert_equal %i[format textile_score markdown_score reason],
@@ -1007,11 +1218,12 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
       assert_kind_of Integer, RedmineRenderSwitcher::Detector::VERSION
     end
 
-    # ADR-0006 (Textile insertion notation) and ADR-0007 (Textile image notation
-    # with styled attribute blocks) move verdicts too, so HTML cached before them
-    # must not be reused. This value must never be lowered.
-    should "be at least 7 so that HTML cached before the styled image rule is not reused" do
-      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 7
+    # ADR-0006 (Textile insertion notation), ADR-0007 (Textile image notation
+    # with styled attribute blocks) and ADR-0008 (Textile color span notation)
+    # move verdicts too, so HTML cached before them must not be reused. This
+    # value must never be lowered.
+    should "be at least 8 so that HTML cached before the color span rule is not reused" do
+      assert_operator RedmineRenderSwitcher::Detector::VERSION, :>=, 8
     end
   end
 end

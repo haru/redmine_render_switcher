@@ -244,6 +244,40 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
     end
   end
 
+  # ADR-0008: a color span is Textile evidence, so an old Textile body holding
+  # one renders colored on a Markdown site too (C-7-1..C-7-4).
+  context "with a Textile color span" do
+    setup { @body = "Result: %{color:red}NG% done" }
+
+    should "render the span colored under either setting" do
+      %w[textile common_mark].each do |format|
+        html = render_with_site_format(format, @body)
+
+        assert_includes html, "<span style=\"color:red;\">NG</span>", format
+        assert_not_includes html, "%{color", format
+      end
+    end
+
+    # The notation glued to a word is no span in Textile either, so a Markdown
+    # site keeps rendering it as the text it is (C-7-3). The CJK text is
+    # deliberate: Japanese is written without spaces, so glue is the usual
+    # shape of the false positive this guards against.
+    should "keep notation glued to a word as text on a Markdown site" do
+      html = render_with_site_format("common_mark", "結果は%{color:red}NG%でした")
+
+      assert_includes html, "%{color:red}NG%でした"
+      assert_not_includes html, "<span"
+    end
+
+    # The directive wins over the score (C-7-4).
+    should "let a markdown directive beat the color span score" do
+      html = render_with_site_format("textile", "<!-- render_switcher: markdown -->\n\n#{@body}")
+
+      assert_not_includes html, "<span"
+      assert_includes html, "%{color:red}"
+    end
+  end
+
   # FR-021: notation that only Markdown reads as structure has to render as
   # structure whichever format the site is set to.
   context "with a Markdown list or heading" do

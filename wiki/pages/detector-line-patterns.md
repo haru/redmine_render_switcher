@@ -1,8 +1,8 @@
 ---
 title: Detector line patterns and their traps
 type: component
-sources: [S003, S004, S005, S007, S008]
-updated: 2026-11-25
+sources: [S003, S004, S005, S007, S008, S009]
+updated: 2026-11-27
 ---
 
 # Detector line patterns and their traps
@@ -18,7 +18,7 @@ constants in `detector.rb`, each measured against Redmine 7.0.1. (S003)
 | `MARKDOWN_TABLE_SEPARATOR` | `/\A\|[\s:\|-]*-[\s:\|-]*\|/` | separator row (moved from the old whole-text pattern to a per-line test) |
 | `INDENTED_LINE` | `/\A(?: {4}\|\t)/` | indented-code masking |
 | `BLANK_LINE` | `/\A\s*\z/` | blank-line test |
-| `LIST_ITEM_LINE` | see conflict below | masking start and Setext context |
+| `LIST_ITEM_LINE` | `[-*]` or `\d+\.` item, no `#+` (see below) | masking start and Setext context |
 
 (S003)
 
@@ -39,22 +39,23 @@ constants in `detector.rb`, each measured against Redmine 7.0.1. (S003)
   Test rows C-4-1 and C-2-5 catch the mistake. (S003, S004)
 - **`LIST_ITEM_LINE` is not anchored.** It is a context predicate ("may this
   line own a following indented line?"), not a scoring pattern, so nested items
-  like `    - inner` must match. FR-022 governs scored patterns only. (S003)
-
-> ⚠ conflict: S003 gives `LIST_ITEM_LINE` as `/\A[ \t]*(?:[-*]|\d+\.|#+)[ \t]/`,
-> including `#+`. The current code (`detector.rb`) and CLAUDE.md omit `#+`: a `#`
-> line may be a Markdown heading, which takes no continuation, so an indented
-> block under it is code and must stay masked. Code wins. (S003)
+  like `    - inner` must match. FR-022 governs scored patterns only. It omits `#+`
+  (S003 first listed it): a `#` line may be a Markdown heading, which takes no
+  continuation, so an indented block under it is code and stays masked. (S003)
 
 ## Inline patterns with boundary conditions
 
-`TEXTILE_INSERTION` (`+text+`, 3 points) and `TEXTILE_IMAGE` (`!…!`, 3 points)
-are the table patterns that check the characters around the notation with
-look-behind instead of a column-0 anchor. `TEXTILE_IMAGE` uses the negative
-look-behind `(?<![^\s>|])` so the start of the text needs no separate branch
-and CRLF line starts come out of the same expression. Their rules and
-trade-offs are on [Textile insertion scoring](./detector-textile-insertion.md)
-and [image scoring](./detector-textile-image.md). (S005, S007, S008)
+`TEXTILE_INSERTION` (`+text+`, 3 points), `TEXTILE_IMAGE` (`!…!`, 3 points)
+and `TEXTILE_COLOR_SPAN` (`%{color:red}text%`, 3 points) are the table
+patterns that check the characters around the notation with look-behind
+instead of a column-0 anchor. `TEXTILE_IMAGE` uses the negative look-behind
+`(?<![^\s>|])` so the start of the text needs no separate branch and CRLF
+line starts come out of the same expression; `TEXTILE_COLOR_SPAN` checks the
+closer with a `[[:punct:]]` lookahead, because RedCloth itself tests
+punctuation that way, so full-width Japanese punctuation matches too. Their
+rules and trade-offs are on [Textile insertion scoring](./detector-textile-insertion.md),
+[image scoring](./detector-textile-image.md) and
+[color span scoring](./detector-textile-color-span.md). (S005, S007, S008, S009)
 
 ## Deliberately not scored
 
