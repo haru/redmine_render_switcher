@@ -15,12 +15,6 @@ rules, (4) compare against the threshold. It returns a `Detector::Result` with
 the chosen format, both scores and a `reason` (four possible values), so every
 decision is explainable. (S001, S002)
 
-> ⚠ conflict: S001 and S002 describe step 3 as one context rule, for `#` lines,
-> and step 1 as fences and `<pre>`. S003 and S004 make step 3 four rules (`#`
-> lines, list blocks, table blocks, Setext headings) and extend step 1 to
-> four-space and tab indented blocks. The later design applies; see
-> [scan structure](./detector-scan-structure.md). (S001, S003)
-
 It also owns `Detector::VERSION`, which feeds the
 [cache key](./cache-key-detector-version.md); the rule revision bumped it from
 3 to 4, and it later moved to 5, to 6 with the ADR-0006 insertion pattern, to
@@ -54,11 +48,6 @@ new bare pattern. (S004)
 - New structural evidence: dash and numbered lists, Setext headings, and tables
   with or without a separator row, counted once per block. Weights and rationale:
   [score once per block](./detector-score-once-per-block.md). (S003)
-
-> ⚠ conflict: S001 lists `**bold**` among the decisive Markdown patterns and
-> `|table|` among the unscored ones. S003 removes `**bold**` and scores tables
-> by block: 4 for Textile without a separator row, 5 for Markdown with one. The
-> later decision applies. (S001, S003)
 
 - The winner must lead by at least the threshold (default 2, see
   [settings](./plugin-settings.md)); otherwise no switch happens. (S001, S002)

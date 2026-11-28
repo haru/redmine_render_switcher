@@ -18,7 +18,7 @@ constants in `detector.rb`, each measured against Redmine 7.0.1. (S003)
 | `MARKDOWN_TABLE_SEPARATOR` | `/\A\|[\s:\|-]*-[\s:\|-]*\|/` | separator row (moved from the old whole-text pattern to a per-line test) |
 | `INDENTED_LINE` | `/\A(?: {4}\|\t)/` | indented-code masking |
 | `BLANK_LINE` | `/\A\s*\z/` | blank-line test |
-| `LIST_ITEM_LINE` | see conflict below | masking start and Setext context |
+| `LIST_ITEM_LINE` | `[-*]` or `\d+\.` item, no `#+` (see below) | masking start and Setext context |
 
 (S003)
 
@@ -39,12 +39,9 @@ constants in `detector.rb`, each measured against Redmine 7.0.1. (S003)
   Test rows C-4-1 and C-2-5 catch the mistake. (S003, S004)
 - **`LIST_ITEM_LINE` is not anchored.** It is a context predicate ("may this
   line own a following indented line?"), not a scoring pattern, so nested items
-  like `    - inner` must match. FR-022 governs scored patterns only. (S003)
-
-> ⚠ conflict: S003 gives `LIST_ITEM_LINE` as `/\A[ \t]*(?:[-*]|\d+\.|#+)[ \t]/`,
-> including `#+`. The current code (`detector.rb`) and CLAUDE.md omit `#+`: a `#`
-> line may be a Markdown heading, which takes no continuation, so an indented
-> block under it is code and must stay masked. Code wins. (S003)
+  like `    - inner` must match. FR-022 governs scored patterns only. It omits `#+`
+  (S003 first listed it): a `#` line may be a Markdown heading, which takes no
+  continuation, so an indented block under it is code and stays masked. (S003)
 
 ## Inline patterns with boundary conditions
 

@@ -15,7 +15,7 @@ at least two lines. (S003, S004)
 
 | Rule | Evidence for | Weight | Counted |
 |---|---|---|---|
-| Markdown list block (`- ` or `N. `, 2+ lines in a row) | Markdown | 3 | once per block |
+| Markdown list block (`- ` or `N. `, 2+ items; blank lines between items keep one block, per ADR-0005) | Markdown | 3 | once per block |
 | Setext underline (a line of `=`) | Markdown | 4 | per occurrence |
 | Table block without a separator row (2+ lines) | Textile | 4 | once per block |
 | Table block with a separator row | Markdown | 5 | once per block |
@@ -43,10 +43,6 @@ Weights are ordered against the existing table: one structural rule (3 or 4)
 cannot overturn a link (4) or a heading (5) alone; a separator-less table sits
 below `|_.` (5) and level with links; the Markdown table keeps its old weight 5,
 so the D-02 sample stays at 30 points. (S003)
-
-> ⚠ conflict: S003 defines a list block as lines that are "consecutive"; the
-> current code and ADR-0005 let blank lines between items stay in the same block.
-> The ADR and code win. (S003)
 
 ## Why two lines minimum
 
