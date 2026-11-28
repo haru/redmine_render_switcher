@@ -190,16 +190,16 @@ end
 
 # ADR-0008 / FR-012: a Textile page whose sections hold color spans on a
 # Markdown site is detected as Textile, and a section save leaves every byte
-# outside the edited section alone. The spans are the Textile evidence here,
-# so this proves the round trip, not the detection; the detection is pinned by
-# the unit tests.
+# outside the edited section alone. The `h2.` headings carry the Textile
+# verdict here, so this proves the round trip, not the detection of the
+# spans; that is pinned by the unit tests.
 class RenderSwitcherColorSpanSectionEditTest < Redmine::IntegrationTest
   include SectionEditSetup
 
   PAGE_TITLE = "RenderSwitcherColorSpanSections"
 
-  COLOR_SPAN_BODY = "h2. A\n\n結果は %{color:red}NG-A% でした\n\nh2. B\n\n" \
-                    "結果は %{color:red}NG-B% でした\n\nh2. C\n\n結果は %{color:red}NG-C% でした\n"
+  COLOR_SPAN_BODY = "h2. A\n\nResult: %{color:red}NG-A% done\n\nh2. B\n\n" \
+                    "Result: %{color:red}NG-B% done\n\nh2. C\n\nResult: %{color:red}NG-C% done\n"
 
   def setup
     super
@@ -218,9 +218,10 @@ class RenderSwitcherColorSpanSectionEditTest < Redmine::IntegrationTest
     before = @page.content.text
     _section, hash = formatter.new(before).get_section(2)
 
+    new_section = "h2. B\n\nResult: %{color:red}NG-B2% done"
     put("/projects/ecookbook/wiki/#{PAGE_TITLE}",
         params: {
-          content: { text: "h2. B\n\n結果は %{color:red}NG-B2% でした", version: @page.content.version },
+          content: { text: new_section, version: @page.content.version },
           section: 2,
           section_hash: hash
         })
@@ -228,9 +229,9 @@ class RenderSwitcherColorSpanSectionEditTest < Redmine::IntegrationTest
     assert_response :redirect
     after = @page.reload.content.text
 
-    assert_equal formatter.new(before).update_section(2, "h2. B\n\n結果は %{color:red}NG-B2% でした"), after
-    assert_includes after, "h2. A\n\n結果は %{color:red}NG-A% でした\n\n"
-    assert_includes after, "\n\nh2. C\n\n結果は %{color:red}NG-C% でした"
+    assert_equal formatter.new(before).update_section(2, new_section), after
+    assert_includes after, "h2. A\n\nResult: %{color:red}NG-A% done\n\n"
+    assert_includes after, "\n\nh2. C\n\nResult: %{color:red}NG-C% done"
   end
 end
 

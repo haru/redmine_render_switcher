@@ -247,7 +247,7 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
   # ADR-0008: a color span is Textile evidence, so an old Textile body holding
   # one renders colored on a Markdown site too (C-7-1..C-7-4).
   context "with a Textile color span" do
-    setup { @body = "結果は %{color:red}NG% でした" }
+    setup { @body = "Result: %{color:red}NG% done" }
 
     should "render the span colored under either setting" do
       %w[textile common_mark].each do |format|
@@ -259,7 +259,9 @@ class RenderSwitcherRenderingTest < Redmine::HelperTest
     end
 
     # The notation glued to a word is no span in Textile either, so a Markdown
-    # site keeps rendering it as the text it is (C-7-3).
+    # site keeps rendering it as the text it is (C-7-3). The CJK text is
+    # deliberate: Japanese is written without spaces, so glue is the usual
+    # shape of the false positive this guards against.
     should "keep notation glued to a word as text on a Markdown site" do
       html = render_with_site_format("common_mark", "結果は%{color:red}NG%でした")
 

@@ -75,25 +75,30 @@ behaviour. The evidence lives in `specs/007-detect-textile-color-span/research.m
    RedCloth itself tests punctuation that way — full-width Japanese punctuation
    (`、` `。` `！` `）` `」`) matches it too. The body is matched lazily, so
    `結果は %{color:red}NG%でした。次は 50% です` closes at the later valid `%`
-   exactly as RedCloth does. The pattern is ASCII-only and fixes no encoding,
-   so `match?` on Shift_JIS or BINARY strings raises nothing.
+   exactly as RedCloth does. The paragraph limit holds for CRLF line breaks
+   too, which is how Redmine stores issue descriptions. The pattern is
+   ASCII-only and fixes no encoding, so it adds no encoding constraint of its
+   own; the full-width punctuation above matches in a UTF-8 string, and
+   invalid byte sequences still raise, as they should.
 
-   The remaining gaps are pinned by the `COLOR_SPAN_MISSED` and
-   `COLOR_SPAN_RESIDUAL` fixtures of the detector test so that a later change
-   cannot widen or close them unnoticed:
+   The remaining gaps are pinned by the detector test's fixtures
+   (`COLOR_SPAN_MISSED`, `COLOR_SPAN_RESIDUAL`, and for the two rows noted
+   below `COLOR_SPAN_NOT_COLORED` and `COLOR_SPAN_COUNTED`) so that a later
+   change cannot widen or close them unnoticed:
 
    | Input | Textile renders | Pattern | Reason |
    |---|---|---|---|
    | `%{color:red}a` ⏎ `%` | colored span (`<br>` inside) | no match | body ends at a newline, which is whitespace (FR-003) |
    | `%(cls){color:red}x% y` | colored span | no match | class attribute before the style is out of scope |
    | `_%{color:red}x%_`, `-%{color:red}x%-` | colored span | no match | only `*`/`**` prefaces count; no data for other emphasis |
-   | `%{color:\nred}x%` | bare `<span>` | no match | multi-line `{…}`; Textile drops the style too, so nothing is lost |
-   | `a\|%{color:red}x% y` | plain text | match | a `|` that is not a table cell (decision 2's approximation) |
+   | `***%{color:red}x%*** y` | colored span | no match | up to two stars only; three are out of scope |
+   | `%{color:\nred}x%` (in `COLOR_SPAN_NOT_COLORED`) | bare `<span>` | no match | multi-line `{…}`; Textile drops the style too, so nothing is lost |
+   | `a\|%{color:red}x% y` | plain text | match | a `|` that is not a table cell (decision 3's approximation) |
    | `%{color:rgb(1,2,3)}x% y`, `%{color:}x% y` | bare `<span>` | match | value fails Redmine's `STYLES_RE`, style dropped — the notation still disappears from the page |
-   | `` `a %{color:red}NG% b` `` | colored span, backticks kept as text | match | a backtick is not code in Textile, so the span after the space renders; inline code is outside code-block masking, the Markdown backticks score 3 in return and the document ties |
+   | `` `a %{color:red}NG% b` `` (in `COLOR_SPAN_COUNTED`) | colored span, backticks kept as text | match | a backtick is not code in Textile, so the span after the space renders; inline code is outside code-block masking, the Markdown backticks score 3 in return and the document ties |
 
 4. **The weight is 3 points**, the same as the other inline notations
-   ({TEXTILE_INLINE_CODE}, {TEXTILE_INSERTION}, {TEXTILE_IMAGE}): one
+   (`TEXTILE_INLINE_CODE`, `TEXTILE_INSERTION`, `TEXTILE_IMAGE`): one
    occurrence alone clears the default threshold of 2, which is what saves a
    document whose only Textile evidence is one color span — the majority shape
    in the reporter's data.
@@ -127,9 +132,11 @@ cache-key suffix becomes `-rs8t<threshold>`.
   span renders under either site setting.
 - **Ordinary `%` prose stays Markdown.** `達成率 50% と 80% の間`,
   `結果は%{color:red}NG%でした` (no boundary on either `%`),
-  `%{background:yellow}黄% x` and `件数は %{count}件% です` score nothing,
-  pinned by the `COLOR_SPAN_NOT_NOTATION` fixtures and checked against
-  RedCloth, which renders none of them as a colored span either.
+  `%{background:yellow}黄% x` and `件数は %{count}件% です` score nothing.
+  The first two are pinned by `COLOR_SPAN_NOT_NOTATION` (Textile renders no
+  span at all); the last two by `COLOR_SPAN_NOT_COLORED` (Textile renders a
+  bare, undecorated `<span>`). RedCloth renders none of them as a colored
+  span.
 - **Some Textile spans are missed**, as listed under Decision 3; a body whose
   only evidence is such a shape stays undecided and follows the site setting.
 - **A few shapes count although Textile renders no colored span** (a `|` that

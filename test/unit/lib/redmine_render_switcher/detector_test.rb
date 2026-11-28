@@ -748,7 +748,9 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     "%{color:red}x%\r\ny",
     "%{;color:red}x% y",
     "結果は %{color:red}NG%でした。次は 50% です",
-    "`a %{color:red}NG% b`"
+    "`a %{color:red}NG% b`",
+    "a\t%{color:red}x% y",
+    "%{\tcolor:red}x% y"
   ].freeze
 
   # Textile renders no span at all and the pattern must not count it
@@ -763,21 +765,28 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     "達成率 50% と 80% の間",
     "100%{x} 完了 50%",
     "%{color:red}a\n\nb% x",
+    "%{color:red}a\r\n\r\nb% x",
+    "%{color:red}a\n  \nb% x",
     "a*%{color:red}x%* y",
     "%{color:red}a%a",
-    "\"%{color:red}x%\":http://e.com",
     "`%{color:red}NG%`",
     "%[ja]{color:red}x% y"
   ].freeze
+
+  # A real Textile link whose text holds the notation: Textile renders the link
+  # and no span, and the link notation itself is worth 4 points.
+  COLOR_SPAN_IN_LINK = "\"%{color:red}x%\":http://e.com"
 
   # Textile renders a span for each of these, but not a colored one: a block
   # without a color property (FR-001 (a)), a name that merely contains "color"
   # (FR-001 (b)), space between the name and the colon (FR-001 (c)), a block
   # without any colon (FR-001 (d), the shape of Ruby i18n format strings), a
-  # block spanning two lines, and an empty span body. This is the one place
-  # where counting deliberately disagrees with Textile's rendering, so it is
-  # pinned against both facts: a span in the HTML, no color style in it, and
-  # no Textile points.
+  # block spanning two lines, an empty span body, and blocks whose braces or
+  # quotes make Textile keep the text as the span body instead of a style. This
+  # is the one place where Textile renders a span that is deliberately not
+  # counted, so it is pinned against both facts: a span in the HTML, no color
+  # style in it, and no Textile points. The non-ASCII lines are deliberate, as
+  # above.
   COLOR_SPAN_NOT_COLORED = [
     "%{background:yellow}黄% x",
     "%{font-size:2em}c% x",
@@ -788,17 +797,23 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     "件数は %{count}件% です",
     "エラー: %{value} は %{count} 以下%",
     "%{color:\nred}x%",
-    "%{color:red}%"
+    "%{color:red}%",
+    "%{{a;color:red}x% y",
+    "%{color:\"red\"}x% y",
+    "%{a:\"b\";color:red}x% y",
+    "%{\ncolor:red}x% y"
   ].freeze
 
   # Textile renders a colored span but the pattern does not count it
   # (contracts C-3, ADR-0008): a body ending at a newline, a class attribute
-  # before the style block, and a span wrapped in emphasis other than stars.
+  # before the style block, a span wrapped in emphasis other than stars, and
+  # a span wrapped in three stars (the pattern allows up to two).
   COLOR_SPAN_MISSED = [
     "%{color:red}a\n%",
     "%(cls){color:red}x% y",
     "_%{color:red}x%_",
-    "-%{color:red}x%-"
+    "-%{color:red}x%-",
+    "***%{color:red}x%*** y"
   ].freeze
 
   # Counted although Textile renders no colored span (contracts C-4,
@@ -810,6 +825,11 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     "%{color:rgb(1,2,3)}x% y",
     "%{color:}x% y"
   ].freeze
+
+  # What a colored span looks like in RedCloth's output: a +color+ property at
+  # the start of the style attribute or after another declaration. A bare
+  # +color:+ substring is not enough, since +background-color:+ contains it.
+  COLORED_SPAN_HTML = /<span style="(?:[^"]*;)?color:/i
 
   # Renders +text+ with the bare Textile formatter, skipping the plugin.
   def textile_html(text)
@@ -1003,14 +1023,10 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     end
   end
 
-  # ADR-0008: %{color:red}text% is Textile's color span notation. Each fixture
-  # list is checked against what RedCloth really renders, so the pattern can
-  # only count what Textile turns into a colored span, apart from the misses
-  # and residual false positives the ADR lists.
   context "RedmineRenderSwitcher::Detector::TEXTILE_COLOR_SPAN" do
     should "match exactly where RedCloth renders a colored span, apart from the accepted misses and residuals" do
       assert_matches_redcloth(RedmineRenderSwitcher::Detector::TEXTILE_COLOR_SPAN,
-                              /<span style="(?:[^"]*;)?color:/i,
+                              COLORED_SPAN_HTML,
                               counted: COLOR_SPAN_COUNTED, not_notation: COLOR_SPAN_NOT_NOTATION,
                               missed: COLOR_SPAN_MISSED, residual: COLOR_SPAN_RESIDUAL)
     end
@@ -1022,7 +1038,7 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
     should "not count a styled span that has no color property (FR-001)" do
       COLOR_SPAN_NOT_COLORED.each do |text|
         assert_includes textile_html(text), "<span", text
-        assert_not textile_html(text).match?(/<span style="(?:[^"]*;)?color:/i), text
+        assert_not textile_html(text).match?(COLORED_SPAN_HTML), text
         assert_equal 0, scores(text).first, text
       end
     end
@@ -1041,11 +1057,11 @@ class RedmineRenderSwitcherDetectorTest < ActiveSupport::TestCase
 
     should "add no Textile points for text Textile leaves alone (C-2)" do
       COLOR_SPAN_NOT_NOTATION.each do |text|
-        # `"%{color:red}x%":http://e.com` is a real Textile link: its 4 points
-        # come from the link notation. The span inside matches nowhere.
-        expected = text.start_with?("\"") ? 4 : 0
-        assert_equal expected, scores(text).first, text
+        assert_equal 0, scores(text).first, text
       end
+      assert_equal 4, scores(COLOR_SPAN_IN_LINK).first, COLOR_SPAN_IN_LINK
+      assert_not textile_html(COLOR_SPAN_IN_LINK).match?(COLORED_SPAN_HTML)
+      assert_not RedmineRenderSwitcher::Detector::TEXTILE_COLOR_SPAN.match?(COLOR_SPAN_IN_LINK)
     end
 
     should "decide a lone color span as Textile 3:0, LF or CRLF (C-1-1, C-1-5)" do

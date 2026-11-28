@@ -41,7 +41,7 @@ blocks count (`%{font-weight:bold; color:red}x% y`). (S009)
 The opener sits at the start of a line or after whitespace, `(`, `>` or `|`
 (the `|` being the same table-cell approximation as the image pattern),
 optionally preceded by up to two `*` (strong text around a span). The body is
-non-empty, stays within its paragraph (no blank line) and does not end with
+non-empty, stays within its paragraph (no blank line, LF or CRLF) and does not end with
 whitespace. The closer is followed by end of line, whitespace or punctuation,
 written as `[[:punct:]]` because RedCloth itself tests punctuation that way —
 full-width Japanese punctuation (`、` `。` `！` `）` `」`) matches too. The
@@ -75,8 +75,8 @@ exactly as RedCloth does. The expression is ASCII-only and fixes no encoding.
 - Any `{…}` holding a colon (`%{count}` included): Ruby i18n format strings
   appear in ordinary Markdown prose, and Textile renders such a block as a
   bare `<span>` with no decoration. (S009)
-- A loose `\bcolor\s*:`: matches `background-color` and `color :red`, whose
-  styles Redmine keeps or discards incorrectly. (S009)
+- A loose `\bcolor\s*:`: matches `background-color` (a different property,
+  kept by Redmine) and `color :red` (whose style Redmine discards). (S009)
 - A negated lookbehind `(?<![^\s(>|*])` for the opener: admits
   `a*%{color:red}x%*`, which Textile does not render — hence the separate
   `\*{0,2}` after a valid position. (S009)
