@@ -2,8 +2,6 @@ name: Bug Report
 description: Create a bug report
 title: "[Bug]: "
 labels: ["bug"]
-assignees:
-  - octocat
 body:
   - type: markdown
     attributes:
@@ -21,9 +19,9 @@ body:
     validations:
       required: true
   - type: input
-    id: redmine-render-switcher-version
+    id: render-switcher-version
     attributes:
-      label: AI Helper Version
+      label: Render Switcher Version
       description: What version of Render Switcher plugin are you running?
     validations:
       required: true
