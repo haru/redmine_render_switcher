@@ -41,7 +41,7 @@ behaviour. The evidence lives in `specs/007-detect-textile-color-span/research.m
      (?<=^|[\s(>|]) \*{0,2}
      %
      \{ (?:(?!\{)[^"}\n]*;)? [ \t]* color: [^"}\n]* \}
-     (?: [^\n] | \n(?![ \t]*$) )*? \S
+     (?: [^\n] | \n(?![ \t\r]*$) )*? \S
      %
      (?=$|\s|[[:punct:]])
    /xi
